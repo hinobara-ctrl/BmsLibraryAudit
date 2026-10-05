@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BmsLibraryAudit.Core/BmsLibraryAudit.Core.csproj" />
+    <Project Path="src/BmsLibraryAudit.Cli/BmsLibraryAudit.Cli.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BmsLibraryAudit.Tests/BmsLibraryAudit.Tests.csproj" />
+  </Folder>
+</Solution>
