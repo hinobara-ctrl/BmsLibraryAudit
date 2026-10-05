@@ -4,6 +4,11 @@ Scope: `PHASE_1.CHART_INDEX_AND_RELATIONSHIP_DISCOVERY`.
 Chart bytes are opaque. The only recognized extensions are `.bms`, `.bme`,
 `.bml`, `.pms`, `.bmson`, compared without case sensitivity.
 
+`PHASE_1_STATUS: VALIDATED`. See the
+[real-library validation record](PHASE_1_REAL_LIBRARY_VALIDATION.md). The
+authorized implementation baseline remains
+`53c45ca322f63da67b1657b34be6826d838cfd92`.
+
 ## Build and run
 
 Requires a .NET 10 SDK. Direct production dependency: Microsoft.Data.Sqlite

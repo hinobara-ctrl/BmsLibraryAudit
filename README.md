@@ -5,6 +5,9 @@ Independent, conservative BMS library auditor.
 Current scope: `PHASE_1.CHART_INDEX_AND_RELATIONSHIP_DISCOVERY`.
 Heuristics discover. Exact evidence proves. Verified plans mutate.
 
+`PHASE_1_STATUS: VALIDATED`. Phase 1 was validated against the real library;
+see [the real-library validation record](docs/PHASE_1_REAL_LIBRARY_VALIDATION.md).
+
 This phase indexes opaque chart bytes and reports chart-set relationships.
 It does not authorize consolidation or removal of any source content.
 
@@ -32,6 +35,7 @@ It generates `summary.json`, `duplicate_charts.csv`, `folder_candidates.csv`
 and `clusters.csv`. Clusters describe relationship paths, not merge authority.
 
 See [Phase 1 usage, schema, safety and limitations](docs/PHASE_1.md),
+[real-library validation](docs/PHASE_1_REAL_LIBRARY_VALIDATION.md),
 [architectural context](MASTER_CONTEXT.md), [sources](docs/SOURCES.md) and
 [repository policy](AGENTS.md). A synthetic CLI smoke test is available as
 `./scripts/Smoke-Test.ps1` after the Release build.
