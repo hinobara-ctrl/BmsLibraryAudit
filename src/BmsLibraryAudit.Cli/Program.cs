@@ -7,9 +7,12 @@ return Run(args);
 static int Run(string[] args)
 {
     const string usage = """
-        BmsLibraryAudit Phase 1
+        BmsLibraryAudit: Phase 1 and synthetic-validated Phase 2A (Windows)
         bms-audit scan --db <audit.db> --root <path> [--root <path> ...] [--rehash-all]
         bms-audit report --db <audit.db> --output <new-or-empty-directory>
+        bms-audit phase2 preflight --source-db <audit.db> --source-scan <id> --db <phase2.db> --output <new-or-empty-directory> [--component <EXACT_ONLY-id> ...]
+        bms-audit phase2 report --db <phase2.db> --session <id> --output <new-or-empty-directory>
+        Phase 2B hashing is not implemented. Real-library Phase 2A execution requires separate authorization.
         Outputs must be outside source libraries. Sources are only read.
         """;
     if (args.Length == 0 || args is ["--help"] or ["-h"])
@@ -18,6 +21,7 @@ static int Run(string[] args)
     Console.CancelKeyPress += (_, eventArgs) => { eventArgs.Cancel = true; cancellation.Cancel(); };
     try
     {
+        if (args[0] == "phase2") return RunPhaseTwo(args, cancellation.Token);
         var command = args[0];
         if (command is not ("scan" or "report")) throw new ArgumentException($"Unknown command: {command}");
         string? db = null, output = null;
@@ -50,7 +54,36 @@ static int Run(string[] args)
         Console.WriteLine($"Reports: summary.json, duplicate_charts.csv, folder_candidates.csv, clusters.csv\nCandidate pairs: {analysis.Candidates.Count}; duplicate SHA-256 groups: {analysis.DuplicateGroups.Count}");
         return 0;
     }
-    catch (OperationCanceledException) { Console.Error.WriteLine("Scan cancelled; transaction rolled back."); return 130; }
+    catch (OperationCanceledException) { Console.Error.WriteLine(args[0] == "phase2" ? "Phase 2A operation cancelled; inspect the persisted session/export state." : "Scan cancelled; transaction rolled back."); return 130; }
+    catch (Exception exception) when (args[0] == "phase2" && exception is JsonException or FormatException or InvalidCastException or OverflowException)
+    { Console.Error.WriteLine($"Error: invalid Phase 2 input/evidence: {exception.Message}"); return 1; }
     catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or IOException or UnauthorizedAccessException or SqliteException)
     { Console.Error.WriteLine($"Error: {exception.Message}"); return 1; }
+}
+
+static int RunPhaseTwo(string[] args, CancellationToken token)
+{
+    if (args.Length < 2) throw new ArgumentException("phase2 requires preflight or report.");
+    var command = args[1];
+    if (command == "hash") throw new ArgumentException("Phase 2B hashing is unsupported and not authorized. No payload reads were started.");
+    if (command is not ("preflight" or "report")) throw new ArgumentException("Unknown Phase 2 command.");
+    var options = new Dictionary<string, string>(StringComparer.Ordinal);
+    var components = new List<string>();
+    for (var index = 2; index < args.Length; index++)
+    {
+        var key = args[index];
+        if (++index >= args.Length || args[index].StartsWith("--", StringComparison.Ordinal)) throw new ArgumentException("Missing option value: " + key);
+        var value = args[index];
+        if (key == "--component" && command == "preflight") { components.Add(value); continue; }
+        var valid = key is "--db" or "--output" || command == "preflight" && key is "--source-db" or "--source-scan" || command == "report" && key == "--session";
+        if (!valid || !options.TryAdd(key, value)) throw new ArgumentException("Unknown, duplicate or inapplicable option: " + key);
+    }
+    string Required(string key) => options.TryGetValue(key, out var value) ? value : throw new ArgumentException(key + " is required.");
+    long Id(string key) => long.TryParse(Required(key), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var id) && id > 0 ? id : throw new ArgumentException("Invalid positive identifier: " + key);
+    var db = Required("--db"); var output = Required("--output");
+    var result = command == "preflight"
+        ? new PhaseTwoPreflightRunner().Run(new(Required("--source-db"), Id("--source-scan"), db, output, components), token)
+        : PhaseTwoReportWriter.Write(db, Id("--session"), output, token);
+    Console.WriteLine(JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true }));
+    return result.State == "COMPLETED" ? result.ExitCode : result.State == "CANCELLED" ? 130 : result.State == "STALE" ? 2 : 1;
 }

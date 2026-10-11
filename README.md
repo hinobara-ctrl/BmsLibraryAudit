@@ -2,7 +2,8 @@
 
 Independent, conservative BMS library auditor.
 
-Current scope: `PHASE_1.CHART_INDEX_AND_RELATIONSHIP_DISCOVERY`.
+Implemented scope: validated `PHASE_1.CHART_INDEX_AND_RELATIONSHIP_DISCOVERY`
+and `PHASE_2A.READ_ONLY_PREFLIGHT` with synthetic validation on Windows.
 Heuristics discover. Exact evidence proves. Verified plans mutate.
 
 `PHASE_1_STATUS: VALIDATED`. Phase 1 was validated against the real library;
@@ -39,3 +40,25 @@ See [Phase 1 usage, schema, safety and limitations](docs/PHASE_1.md),
 [architectural context](MASTER_CONTEXT.md), [sources](docs/SOURCES.md) and
 [repository policy](AGENTS.md). A synthetic CLI smoke test is available as
 `./scripts/Smoke-Test.ps1` after the Release build.
+
+Phase 2A captures a read-only Phase 1 database, freshly revalidates direct charts
+in complete EXACT_ONLY components, and inventories their observation subtrees
+using metadata only. It persists an independent `phase2.db`, a deterministic
+preflight seal and four reports. Non-chart resources and unselected nested
+charts are not payload-read. Windows native identity, alias and exclusion
+checks are mandatory; unsupported configurations fail closed.
+
+```powershell
+dotnet run --project src/BmsLibraryAudit.Cli -c Release -- phase2 preflight --source-db C:\Synthetic\audit.db --source-scan 1 --db C:\Synthetic\phase2.db --output C:\Synthetic\preflight
+dotnet run --project src/BmsLibraryAudit.Cli -c Release -- phase2 report --db C:\Synthetic\phase2.db --session 1 --output C:\Synthetic\repeat
+./scripts/Phase2A-Smoke-Test.ps1
+```
+
+Use repeated `--component EXACT_ONLY_000001` to select complete components from
+the captured latest scan. Report output must be new or empty and outside every
+captured current/historical source root. Reporting uses persisted evidence.
+Phase 2B hashing is not implemented; `phase2 hash` returns an unsupported error.
+Real-library Phase 2A execution requires separate authorization. Preflight
+admission is metadata evidence, with no package-equivalence or mutation claim.
+See [the Phase 2A implementation report](docs/PHASE_2A_IMPLEMENTATION_REPORT.md)
+and [the governing design contract](docs/PHASE_2_READ_ONLY_EXACT_CANDIDATE_FILESYSTEM_EVIDENCE_CONTRACT.md).
