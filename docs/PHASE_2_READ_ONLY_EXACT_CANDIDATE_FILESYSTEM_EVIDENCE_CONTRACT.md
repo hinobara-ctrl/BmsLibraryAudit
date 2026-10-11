@@ -137,8 +137,9 @@ component selection, automatic container pruning or heuristic admission.
 Only EXACT_CHART_SET edges contribute to EXACT_ONLY components. A_SUBSET_OF_B,
 B_SUBSET_OF_A, HIGH_OVERLAP, MEDIUM_OVERLAP and SHARED_CHARTS are inadmissible
 in v1. Members are not separately inventoried for every edge. Within each
-admitted component, comparisons cover every unordered member pair, including
-components with more than two members. No cross-component pairs are generated.
+admitted component that has a COMPLETE 2B outcome, comparisons cover every
+unordered member pair, including components with more than two members.
+No cross-component pairs are generated.
 
 Phase 2A MUST stop after sealing its evidence and producing preflight reports.
 It MUST NOT start, schedule or resume Phase 2B. The second invocation and exact
@@ -146,12 +147,17 @@ accepted manifest digest record the human gate. This authorizes only the
 stated read workload. A different workload requires a new preflight; v1 does
 not silently enlarge or shrink the admitted selection at the hash command.
 
-Exit codes: 0 coherent completed operation; 1 fatal configuration/ownership/
-database/report failure; 2 coherent preflight with rejected components or a
-terminal FAILED/STALE content attempt; 130 cancellation. Warnings alone do not
-imply failure. A completed preflight with zero admitted components is reportable
-with exit 2; hash refuses it. Report failure never silently discards evidence
-already committed in phase2.db.
+Exit codes distinguish session state from process result: 0 for a coherent
+preflight without rejected components or a COMPLETED content session whose
+admitted components are all COMPLETE; 2 for a coherent preflight with rejected
+components, a COMPLETED content session with any INCOMPLETE component, or a
+global STALE attempt; 1 for fatal configuration/ownership/database/report/global
+integrity or infrastructure failure; 130 for cancellation. Warnings alone do
+not imply failure. All-INCOMPLETE content can still be coherently COMPLETED
+with exit 2 and no eligible comparisons. A completed preflight with zero admitted
+components is reportable with exit 2; hash refuses it. Successful reporting
+preserves the selected session's result semantics; an export failure returns 1
+without silently discarding evidence already committed in phase2.db.
 
 ## 4. Immutable Phase 1 provenance capture
 
@@ -386,11 +392,33 @@ after; retain observed start/end and attempt count.
 On an unstable read, retry once only if a fresh safety/stamp check still matches
 the accepted manifest. Otherwise mark STALE_PREFLIGHT immediately. A second
 unstable attempt yields FILE_UNSTABLE and no trusted digest. Unreadability is
-FILE_READ_ERROR. Any failed required file makes the *entire* v1 content session
-FAILED or STALE; partial results cannot support completed comparisons. A
-failure propagates to every root membership of that file. This conservative
-all-session rule avoids publishing a successful subset under an accepted larger
-workload. Diagnostics may still be reported.
+FILE_READ_ERROR. These ordinary content failures are component-local only when
+the accepted scope, provenance, safety, manifest and database remain globally
+trustworthy. Record the failed physical-file result without a digest, mark
+**every** dependent observation view affected, and make **every** dependent
+source EXACT_ONLY component INCOMPLETE for this content session. Follow all
+observation memberships and component memberships, including nested roots in
+different components; do not stop at the first component. Hash deduplication
+must not hide this propagation. Independent components remain eligible.
+
+Continue the unchanged authorized workload in deterministic physical-path
+order, including remaining files in already incomplete components. Do not
+remove a component, shrink the workload, salvage healthy pairs, retry beyond
+the single instability retry, resume or use a cache. A later success on another
+file cannot repair a failed required file; its dependent components remain
+INCOMPLETE for this session. Preserve individual successful facts and contextual
+diagnostics, while equality/conflict conclusions for incomplete components stay
+NULL/UNKNOWN. Unreadability is not evidence of inequality.
+
+Manifest divergence before/during any read remains global STALE_PREFLIGHT,
+including changed stamps, membership, kind, attributes, directory presence,
+reparse safety or enumeration. It aborts the whole attempt and requires new 2A;
+it MUST NOT be relabeled FILE_UNSTABLE or FILE_READ_ERROR to retain comparisons.
+Accepted-digest/seal mismatch, database integrity/schema/contract/platform or
+ownership failure, provenance/authorized-scope failure, source/output safety
+violation, corruption and infrastructure failure preventing coherent
+finalization remain global failures. Cancellation also terminates the entire
+session. None permits trusted component comparisons in that attempt.
 
 Fresh 2B direct-chart digests MUST equal the accepted 2A direct-chart digests.
 If not, set STALE_PREFLIGHT and STALE_PHASE_1_CANDIDATE even if stamps match.
@@ -417,9 +445,13 @@ fresh independent revalidation, even for a COMPLETED Phase 2 session.
 ## 9. Exact comparison dimensions
 
 Comparisons are computed only from one coherent COMPLETED content session and
-from its admitted component member views. Endpoints A/B are ordered by
-normalized absolute root path. Compare all unordered member pairs exactly once.
-No source file is reread for a pair; join memberships to stored file hashes.
+from member views of its COMPLETE content components. COMPLETE requires a
+trusted fresh 2B digest for every distinct required physical file contributing
+to that component, matching direct-chart checks, valid relevant final manifest
+verification and no unresolved content-read uncertainty. Endpoints A/B are
+ordered by normalized absolute root path. Compare every unordered member pair
+in each COMPLETE component exactly once. No source file is reread for a pair;
+join memberships to stored file hashes. No cross-component comparisons exist.
 
 For a complete root R define:
 
@@ -475,9 +507,14 @@ primary category:
 | OBSERVED_FILESET_VARIANT | Any full tree difference between complete views, including directory-only or content-only difference |
 | OBSERVED_SUBTREE_INCOMPLETE | A view lacks complete safe enumeration or required trusted hashes |
 
-For incomplete/failed/stale evidence, equality and conflict booleans are NULL
-(unknown), not false or vacuously true. No completed folder_comparison row is
-published; root/component outcomes and diagnostics explain the condition.
+An INCOMPLETE content component has at least one required physical file without
+a trusted digest due to FILE_READ_ERROR or FILE_UNSTABLE. All dependent views
+are affected; the entire source component is comparison-ineligible, including
+otherwise healthy member pairs. For that component, equality/conflict booleans
+are NULL (unknown), not false or vacuously true, and no completed comparison row
+is published. Root/component outcomes and diagnostics explain the condition.
+Other COMPLETE components in the same COMPLETED session retain exact evidence.
+Global FAILED/STALE/CANCELLED sessions publish no trusted comparisons anywhere.
 Complete views may have several true exact labels. None may be renamed to
 PACKAGE_EXACT, SAFE_TO_MERGE, SAFE_TO_DELETE, REDUNDANT_PACKAGE or
 REMOVABLE_DUPLICATE. This contract provides no mutation authority.
@@ -508,15 +545,16 @@ normalized keys have separate columns. Internal IDs never replace provenance.
 | candidate_components | PK component_id; preflight FK; source component label; component identity digest; captured distinct-set identity/count; member count; outcome ADMITTED, STALE_PHASE_1_CANDIDATE or OBSERVED_SUBTREE_INCOMPLETE; reason. UNIQUE(preflight_id, source_component_label) |
 | observation_roots | PK observation_root_id; preflight FK; captured source library-root FK; original/normalized path; chart state PENDING/CURRENT/STALE/ERROR; inventory state PENDING/COMPLETE/INCOMPLETE; logical counts/bytes and lower-bound flag. UNIQUE(preflight_id, normalized_path) |
 | component_memberships | PK(component_id, observation_root_id); FKs; UNIQUE(observation_root_id) within its preflight: one source exact component per selected root |
-| source_exact_edges | PK(component_id, root_a_id, root_b_id); ordered endpoint FKs; captured charts_a/charts_b/common and physical counts; CHECK common=charts_a=charts_b>0. Edges must reproduce selected component connectivity |
+| source_exact_edges | PK(component_id, root_a_id, root_b_id); ordered endpoint FKs; captured charts_a/charts_b/common and physical counts; `CHECK (common = charts_a AND common = charts_b AND common > 0)`. Edges must reproduce selected component connectivity |
 | chart_revalidations | PK(preflight_id, normalized_chart_path); nullable captured-chart FK (NULL for unexpected paths); original observed filename, fresh stamps/size/SHA-256, bytes read/attempts; read_status SUCCESS/MISSING/UNREADABLE/UNSTABLE/REPARSE, match_status MATCH/CHANGED/MISSING/UNEXPECTED/UNKNOWN. Fresh digest NULL unless read_status=SUCCESS; a successful read of changed/unexpected bytes does not admit a stale component |
 | direct_chart_memberships | PK(observation_root_id, normalized_chart_path); chart_revalidation FK; captured/source membership flag, observed membership flag; compare paths individually, retaining unexpected and missing paths |
 | preflight_entries | PK entry_id; preflight FK; original/normalized absolute path; kind DIRECTORY/REGULAR_FILE/REPARSE/OTHER/UNKNOWN; size/mtime/attributes/extension/chart flag; status and readability. UNIQUE(preflight_id, normalized_path); failed metadata retains a row |
 | physical_files | PK physical_file_id; UNIQUE entry_id FK; only REGULAR_FILE entries; optional native volume/file identity. This is path identity, not SHA-256 identity; no UNIQUE constraint on file digest or native inode across different names |
 | observation_memberships | PK(observation_root_id, entry_id); relative path and comparison key; UNIQUE(observation_root_id, relative_path_key); FKs share the same preflight; membership includes directories and root `.` |
-| content_hashes | PK(content_session_id, physical_file_id); FKs bind the content session to its parent preflight; SHA-256, bytes read, before/after stamps/identity, attempts and status PENDING/SUCCESS/ERROR/UNSTABLE. SHA-256 NULL unless SUCCESS; successful bytes equal verified size |
+| content_hashes | PK(content_session_id, physical_file_id); FKs bind the CONTENT session to its parent preflight and admitted union; SHA-256, bytes read, before/after stamps/identity, attempts, status PENDING/SUCCESS/ERROR/UNSTABLE and reason_code (FILE_READ_ERROR for ERROR, FILE_UNSTABLE for UNSTABLE). SHA-256 NULL unless SUCCESS; successful bytes equal verified size; terminal COMPLETED sessions contain exactly one non-PENDING result per required physical path |
+| content_component_outcomes | PK(content_session_id, component_id); session/component FKs bound to the same parent preflight and an ADMITTED component; outcome COMPLETE/INCOMPLETE; reason_code, reason; required_physical_file_count, trusted_successful_hash_count, failed_untrusted_file_count, affected_observation_root_count; comparison_eligible, coherent, sealed. Exactly one row per admitted component at completion; counts use distinct required physical paths within that component |
 | diagnostics | PK diagnostic_id; session FK; optional component/root/entry/file FKs; gate, severity, stable code, original/normalized path, attempt and message. Do not attach later-session diagnostics to a sealed earlier session |
-| comparisons | PK(content_session_id, root_a_id, root_b_id); component FK; ordered distinct endpoints in same admitted component; raw counts and all section 9 booleans; coherence/seal. Available only for successfully completed content evidence |
+| comparisons | PK(content_session_id, root_a_id, root_b_id); FK(content_session_id, component_id) to content_component_outcomes; ordered distinct endpoints in that component; raw counts and all section 9 booleans; coherence/seal. Available only in a COMPLETED CONTENT session with a coherent/sealed COMPLETE component outcome; prohibited for INCOMPLETE components |
 | comparison_entries | PK(comparison FK, relative_path_key); evidence category, nullable A/B entry FKs and digests; carries equal-path/conflict/only-side/kind/directory differences, not guessed filename matching |
 | comparison_content_groups | PK(comparison FK, projection FULL/NON_CHART, sha256); counts A/B and differing-path-set flag; membership paths derive by joining shared hashes and observation_memberships, not duplicating file hashes per pair |
 | report_sets | PK report_set_id; session FK; evidence-stage/state/identity; original/normalized destination; export status RUNNING/COMPLETED/FAILED; completed UTC. Report attempts do not modify the session's evidence identity |
@@ -528,13 +566,37 @@ comparisons by session/component. SQL joins MUST explicitly constrain the
 session/preflight; a digest from another run never satisfies a missing hash.
 Multisets count membership rows, not distinct digests or content_hashes rows.
 
+candidate_components.outcome remains exclusively a PREFLIGHT admission result;
+2B MUST NOT overwrite it. Composite FKs or equivalent enforced database write
+guards MUST reject content outcomes, hashes, CONTENT diagnostics or comparisons
+whose referenced component/root/entry belongs to a different parent preflight
+or non-admitted scope. Comparisons must bind both endpoints through component_memberships to
+their content outcome's component. Root impact is derived from failed physical
+paths through observation_memberships, independently of whole-component
+comparison eligibility. Emit a diagnostic binding each failed file to every
+dependent root/component, rather than retaining only the first dependency.
+
+For each coherent outcome, required_physical_file_count equals
+trusted_successful_hash_count + failed_untrusted_file_count.
+COMPLETE requires failed_untrusted_file_count = 0,
+affected_observation_root_count = 0, comparison_eligible = true and
+reason_code = CONTENT_COMPLETE. INCOMPLETE requires a positive failed count,
+a positive affected-root count, comparison_eligible = false and
+reason_code = REQUIRED_CONTENT_UNTRUSTED, with a summary reason and bound
+FILE_READ_ERROR/FILE_UNSTABLE diagnostics explaining every failed result.
+Unknown/unprocessed results cannot satisfy either sealed outcome. Counts and
+flags MUST be checked against the actual same-session dependency joins, not
+accepted as unaudited counters. Coherent/sealed outcomes become trusted only
+with the atomic parent-session COMPLETED transition.
+
 Logical diagrams of ownership:
 
 ```text
 source snapshot -> captured chart index -> exact component -> observation root
 preflight entry -> physical file -> one content hash per content session
 observation root -> membership(relative path) -> preflight entry
-content session -> comparison -> exact dimensions/content-group counts
+content session -> content component outcome -> COMPLETE-only comparison
+comparison -> exact dimensions/content-group counts
 ```
 
 ### 10.1 Seals and immutable identities
@@ -542,7 +604,8 @@ content session -> comparison -> exact dimensions/content-group counts
 A COMPLETED preflight seals provenance, selection, chart revalidation,
 inventory, memberships, outcomes and diagnostics. Update/delete of those facts
 MUST be rejected by database write guards/constraints; later attempts append new
-sessions. A COMPLETED content session similarly seals hashes and comparisons.
+sessions. A COMPLETED content session similarly seals all required file results,
+component outcomes, content diagnostics and eligible comparisons.
 State transitions for running sessions and export receipts are separate from
 sealed evidence. No automated pruning or deletion is in v1.
 
@@ -601,16 +664,40 @@ For component identity, use domain `BmsLibraryAudit.Phase2.Component.v1` and
 two single-field groups: member normalized root paths and distinct chart
 SHA-256 values, each sorted ordinal. Source identity uses domain
 `BmsLibraryAudit.Phase2.Source.v1` and the source_provenance/source_roots/
-source_charts/source_diagnostics groups above. Content identity uses domain
-`BmsLibraryAudit.Phase2.Content.v1`, the accepted preflight digest, completed
-content-session header and successful hashes (physical path key, SHA-256,
-verified size, before/after stamps, bytes read, attempts), sorted by physical
-path. Comparison results MUST be reproducible from these sealed inputs and
-need not duplicate digests into each pair identity. Specify golden encoding/
-digest test vectors before implementation review. The hash command re-encodes
-the sealed preflight and compares the
-provided digest before creating a content RUNNING session. Structural
-inconsistency or a seal mismatch is fatal EVIDENCE_INTEGRITY_ERROR.
+source_charts/source_diagnostics groups above. The preflight seal is unchanged.
+
+Content identity uses domain `BmsLibraryAudit.Phase2.Content.v1` and the same
+token encoding, NULL handling and ordinal logical-key sorting as above, with
+these fixed groups. Internal insertion/session IDs are not canonical keys.
+
+| Content canonical group, in encoding order | Fields in encoding order; row sort key |
+| --- | --- |
+| content_header | accepted_preflight_sha256, contract_version, phase2_schema_version, tool_version, runtime_build_sha, stage, state, started_utc, completed_utc, absolute_comparison_mode, relative_comparison_mode; exactly one CONTENT/COMPLETED row |
+| content_component_outcomes | component_key, outcome, reason_code, reason, required_physical_file_count, trusted_successful_hash_count, failed_untrusted_file_count, affected_observation_root_count, comparison_eligible, coherent, sealed; component_key |
+| content_file_results | physical_path_key, status, reason_code, sha256, verified_size, before_size, before_mtime_ticks, before_native_identity, after_size, after_mtime_ticks, after_native_identity, bytes_read, attempts, read_started_utc, read_ended_utc; physical_path_key |
+| content_diagnostics | component_key, root_key, entry_key, physical_path_key, gate, severity, code, original_path, normalized_path, attempt, message; component_key, root_key, normalized_path, code, attempt, message, severity, gate, entry_key, physical_path_key, original_path |
+
+Include every admitted component, every required physical-file result and all
+content diagnostics, including those binding FILE_READ_ERROR/FILE_UNSTABLE to
+all affected memberships. SUCCESS carries the trusted SHA-256; ERROR/UNSTABLE
+carry NULL digest and their stable failure code, with NULL unknown read facts.
+Fields supplement the overview schema and MUST be persisted or unambiguously
+derived. Identical diagnostic rows retain multiplicity. No PENDING result is
+permitted in a completed seal. The accepted preflight identity binds the full
+dependency graph and authorized workload, including directories and memberships.
+
+Exact comparison evidence for COMPLETE components only MUST be reproducible
+from these sealed inputs under section 9. Finalization MUST verify every stored
+raw dimension, drill-down/group row and independent boolean against that
+deterministic derivation, including pair coverage and absence of comparisons
+for INCOMPLETE components. Thus comparisons participate reproducibly in the
+content identity without duplicating file digests into each pair identity.
+Changing a component outcome, failed-file result or explanatory diagnostic
+changes the content identity even if the successful hashes stay identical.
+Specify golden encoding/digest vectors including mixed outcomes before
+implementation review. The hash command re-encodes the sealed preflight and
+compares the provided digest before creating a content RUNNING session.
+Structural inconsistency or a seal mismatch is fatal EVIDENCE_INTEGRITY_ERROR.
 
 ## 11. Long-run state, interruption and publication
 
@@ -620,20 +707,44 @@ session is never reopened or overwritten.
 
 - PREFLIGHT COMPLETED means a coherent, reviewed-able preflight was sealed,
   potentially with rejected components. It is never content proof.
-- CONTENT COMPLETED requires every admitted file successful, valid final
-  manifest, matching direct-chart digests and all required comparisons.
+- CONTENT COMPLETED means the entire authorized workload reached coherent
+  terminal results, every admitted component has exactly one sealed COMPLETE
+  or INCOMPLETE content outcome, and all global provenance, scope, final
+  manifest, safety and integrity checks passed. Only COMPLETE components have
+  comparisons; mixed or all-INCOMPLETE outcomes are still COMPLETED with exit 2.
 - STALE denotes SOURCE_CHANGED, STALE_PREFLIGHT or inventory drift preventing
-  acceptance; include the specific condition, not a vague failure label.
-- FAILED covers read/hash/database faults without coherent completion.
-- CANCELLED records explicit cancellation; no completed comparisons exist.
+  acceptance; include the specific condition, not a vague failure label. This
+  is global and exposes no trusted component comparisons.
+- FAILED covers global configuration/ownership/provenance/integrity/safety or
+  database/infrastructure faults preventing coherent completion. Ordinary
+  FILE_READ_ERROR/FILE_UNSTABLE alone do not set FAILED; they produce dependent
+  INCOMPLETE content outcomes. A global failure invalidates proof everywhere.
+- CANCELLED records explicit cancellation of the operation; no trusted
+  completed component comparisons exist, even after partial successful reads.
 
 Use short transactions for bounded hash-result batches; do not hold a write
 transaction across hours of HDD reads. Partial rows may be committed under a
-RUNNING session. Readers MUST not treat them as accepted evidence. In one final
-transaction validate success coverage, write/seal comparisons and the content
-identity, then mark COMPLETED. A crash during that transaction cannot publish
-an incomplete completed session. Progress output distinguishes read bytes,
-retry bytes, processed files and trusted-completed-session status.
+RUNNING session. Readers MUST not treat them as accepted evidence. After the
+final global manifest pass, one final transaction MUST verify:
+
+- Exactly one coherent content outcome for every admitted component, with no
+  extra component or unresolved/unprocessed required physical-file result.
+- Full same-session hash coverage and direct-chart consistency for COMPLETE
+  components, and explicit bound failure results/diagnostics for INCOMPLETE
+  components, propagated to all dependent views/components.
+- No comparisons for INCOMPLETE components; every unordered member pair and
+  all correct raw dimensions/groups/booleans for COMPLETE components.
+- All global provenance, authorized-scope, manifest, safety and database/seal
+  integrity conditions still hold; no RUNNING/partial facts are treated as proof.
+- The canonical content identity binds all component/file outcomes and
+  explanatory diagnostics, and comparison evidence is reproducible from it.
+
+Write and seal the outcomes, required results, diagnostics, comparisons and
+content identity, then mark CONTENT COMPLETED atomically. Cancellation/crash
+before this commit cannot publish trusted component proof; interruption during
+it cannot publish a partially sealed completed session. Progress distinguishes
+read bytes, retry bytes, processed files, component outcomes and publication
+status; a processed file or preliminary COMPLETE outcome is not published proof.
 
 Use one writer per phase2.db. A second writer refuses an active writer; it
 does not race session updates. If a crash leaves RUNNING rows after trusted
@@ -659,24 +770,45 @@ stage and state; it does not imply both gates have run.
 
 | Output | Required contents and stable ordering |
 | --- | --- |
-| session_summary.json | Contract/tool/build/schema, phase, session/stage/state, source DB/scan/baselines, preflight ID/digest, scope counts/bytes/anomalies, diagnostics counts, hashing and comparison distributions if trusted; notices and `trusted_content_evidence` |
-| observation_roots.csv | Component/root identities and paths; chart/inventory outcomes; admission and lower-bound counts/bytes; nested/shared path metrics; sorted component identity then normalized root path |
-| filesystem_inventory.csv | One row per observation membership, including directories/errors; paths/kind/chart/metadata/physical path identity; SHA-256 only for trusted completed 2B; sorted normalized root then ordinal relative path |
-| folder_comparisons.csv | One row per complete unordered pair; source/preflight/content/component IDs, all raw counts and nullable/boolean dimensions/labels; sorted component then normalized endpoints |
-| content_groups.csv | One row per comparison/projection/SHA/side/relative membership path with multiplicity counts; FULL and NON_CHART projections; deterministic SHA grouping, no matched-name heuristic |
-| diagnostics.csv | Stage/session/component/root/entry context, severity/code/path/attempt/message; sorted context, normalized path, code, attempt, message |
+| session_summary.json | Contract/tool/build/schema, phase, session/stage/state, source DB/scan/baselines, preflight ID/digest, scope counts/bytes/anomalies, diagnostics counts; admitted_component_count, complete_content_component_count, incomplete_content_component_count, trusted_successful_hash_count, failed_untrusted_content_read_count, comparison_eligible_component_count, excluded_content_component_count, session_result_exit_code; hashing/comparison distributions; notices and trusted_content_evidence_scope |
+| observation_roots.csv | Component/root identities and paths; chart/inventory/admission outcomes and lower-bound counts/bytes; content_component_outcome, content_reason_code/reason, root_content_affected, failed_dependency_count, comparison_eligible; nested/shared path metrics; sorted component identity then normalized root path |
+| filesystem_inventory.csv | One row per observation membership, including directories/errors; paths/kind/chart/metadata/physical path identity; content_read_status/reason_code, individual_file_fact_trusted, content_component_outcome and comparison_eligible; successful fresh SHA-256 facts in COMPLETED 2B including INCOMPLETE components; sorted normalized root then ordinal relative path |
+| folder_comparisons.csv | One row per unordered pair in COMPLETE components only; source/preflight/content/component IDs, all raw counts and nullable/boolean dimensions/labels; sorted component then normalized endpoints |
+| content_groups.csv | COMPLETE component comparisons only; one row per comparison/projection/SHA/side/relative membership path with multiplicity counts; FULL and NON_CHART projections; deterministic SHA grouping, no matched-name heuristic |
+| diagnostics.csv | Stage/session/component/root/entry/physical-file context, severity/code/path/attempt/message; every local failure linked to every dependent root/component; sorted context, normalized path, code, attempt, message |
 
 PREFLIGHT exports contain summary, roots, inventory and diagnostics only.
 folder_comparisons.csv and content_groups.csv MUST be absent, not empty files
 that resemble a completed content analysis. Summary says stage=PREFLIGHT,
-`trusted_content_evidence=false`, content booleans/counts NULL, and includes
+`trusted_content_evidence_scope=NONE`, content booleans/counts NULL, and includes
 content hashing volume estimate. This gate may report chart revalidation
 digests in a distinctly named field, never as completed 2B content evidence.
 
 COMPLETED/CONTENT exports include all six with
-`trusted_content_evidence=true`. FAILED/CANCELLED/STALE terminal exports include
-the four audit outputs only, with content digests suppressed/NULL and partial
-progress explicitly nontrusted. They cannot expose completed equality labels.
+`trusted_content_evidence_scope=COMPLETE_COMPONENTS_ONLY` and an explicit notice
+that session completion does not make every component comparison-eligible.
+Summary counts COMPLETE and INCOMPLETE separately; eligible equals COMPLETE,
+excluded_content_component_count equals INCOMPLETE (not preflight rejections).
+Hash counts count unique physical paths across the admitted union, not summed
+component counts that can double-count shared paths. Successful file facts in
+incomplete components remain individually trusted reads, never equality proof.
+Root impact fields distinguish direct failed dependencies from ineligibility
+inherited from the whole component; even healthy roots in an INCOMPLETE
+component have comparison_eligible=false. Its equality/conflict fields stay
+NULL and it has no comparison/group rows. If all components are INCOMPLETE,
+eligible count is 0, comparison/group CSVs contain headers only, the notice
+explicitly says no trusted comparisons exist, and session_result_exit_code=2.
+All-COMPLETE content has result 0; mixed content has result 2. Summary records
+the session result, independently of any later export failure/result.
+
+FAILED/CANCELLED/STALE terminal exports include the four audit outputs only,
+with `trusted_content_evidence_scope=NONE`, content digests suppressed/NULL,
+individual_file_fact_trusted=false and partial progress explicitly nontrusted.
+Eligible count is 0, complete/incomplete content outcome counts are NULL because
+no trusted final outcomes were sealed, and observed progress/failure counts are
+separately labeled provisional. They cannot expose completed equality labels.
+Preflight roots and inventory use NULL for unperformed 2B outcomes/read facts.
+No global trusted-content boolean substitutes for this scope and outcome model.
 
 Every CSV row includes session/preflight/source-snapshot identity; summary
 includes the full provenance and relevant manifest/content identity. File names
@@ -733,7 +865,9 @@ Before any destination creation/opening:
    sidecar recovery is an explicit external prerequisite, not automatic cleanup.
 6. Recheck entry/ancestor/kind/handle safety at visitation and immediately before
    reads. Do not traverse directory links or read file-link targets. Unknown,
-   special, denied or unstable states are diagnosed and block exact completion.
+   special or unsafe states fail closed globally in 2B; manifest changes are
+   STALE_PREFLIGHT. Ordinary content-only denial/instability with unchanged safe
+   manifest makes every dependent component INCOMPLETE under section 8.2.
 
 Safety checks do not grant permission to enumerate non-admitted libraries or
 guess package scope. Complete protection against adversarial path races is not
@@ -782,7 +916,7 @@ must practically exercise supported reparse and output-alias safety.
 | T06 | Extra empty directory in A or B | Directory-only rows; full/non-chart trees false; multisets unaffected |
 | T07 | Two X files versus one X file | Distinct sets may agree; content multiset false, counts 2 versus 1 |
 | T08 | Nested observation roots in one or different components | One node/hash per normalized path; distinct relative memberships; no scope expansion or cross-component comparisons |
-| T09 | One physical path in multiple views; duplicate bytes at other names | Shared path hashed once; other paths freshly read; multiplicity retained per view |
+| T09 | One physical path in multiple views/components; duplicate bytes at other names; shared-path failure plus unrelated component | Shared path read once (at most the allowed instability retry); other paths freshly read; multiplicity retained. FILE_READ_ERROR/FILE_UNSTABLE has no digest and affects every dependent view/component; all dependent components INCOMPLETE with no healthy-pair salvage, unrelated component COMPLETE; remaining accepted files still processed in deterministic order |
 | T10 | Successful fresh chart revalidation | Every direct path independently matched; instrumentation proves no Phase 1 cache substitution |
 | T11 | Chart bytes changed after Phase 1, including preserved size/mtime | Whole component stale; no payload inventory/hashing for it; new Phase 1 required |
 | T12 | Chart added/removed/renamed or moved after Phase 1 | Individual path discrepancy detected even when distinct SHA set stays equal; case-only rename tested |
@@ -795,8 +929,8 @@ must practically exercise supported reparse and output-alias safety.
 | T19 | Non-chart same-size/mtime-preserving byte edit between gates | Fresh 2B hashes edited bytes; no fabricated comparison with unknown 2A bytes; limitation stated |
 | T20 | Direct chart same-metadata byte edit between gates | 2B digest detects stale preflight/candidate, no completion |
 | T21 | Manifest edit during hashing, including empty-directory change | Final verification prevents completion |
-| T22 | Unreadable non-chart file after readable metadata preflight | FAILED content session, no exact comparisons, all containing views diagnosed |
-| T23 | Unstable non-chart file | At most one retry; no digest after second failure; stale stamp cannot become a new accepted baseline |
+| T22 | At least two independent admitted EXACT_ONLY components; one non-chart file becomes content-unreadable after readable metadata preflight, with manifest unchanged | FILE_READ_ERROR, all dependent views affected, dependent component INCOMPLETE, equality/conflict NULL and no comparisons; independent component COMPLETE with all trusted comparisons in the SAME session; remaining workload processed; coherent CONTENT COMPLETED, exit 2 |
+| T23 | At least two independent admitted components; non-chart read unstable twice while safety/stamp checks still match accepted manifest; separate stamp-divergence fixture | At most one retry; second failure FILE_UNSTABLE with no digest; dependent component INCOMPLETE/no comparisons/NULL booleans, unrelated component COMPLETE; coherent CONTENT COMPLETED/exit 2. Any stamp/manifest divergence instead aborts globally STALE_PREFLIGHT and requires new 2A; stale stamp never becomes a new baseline |
 | T24 | Directory/file reparse point introduced before/during either gate | No traversal/target read; incomplete or stale status; no equal-tree proof |
 | T25 | Source DB changes during fingerprint/capture; existing source sidecar | Fail closed; provenance not accepted; no source/sidecar writes or recovery |
 | T26 | Source DB updated after accepted 2A | 2B derives admission from captured snapshot; never rereads the later database |
@@ -806,14 +940,14 @@ must practically exercise supported reparse and output-alias safety.
 | T30 | Foreign/empty pre-existing/unsupported Phase 2 DB; sidecar collisions | Rejected unchanged; owned new reservation succeeds |
 | T31 | Same completed session reported twice | Every emitted file byte-identical; UTF-8/LF/invariant/CSV quoting verified; no source-content reads |
 | T32 | Unicode, mixed-case extensions, commas/quotes/newlines where supported | Spelling preserved; explicit ordinal relative-tree rules and escaped fields |
-| T33 | Cancel/crash after committed partial hash batches or during final commit | No completed exact proof; interrupted RUNNING later becomes FAILED on explicit writable operation |
-| T34 | Wrong session/preflight hash join; tampered seal | Integrity error; another run's digest cannot fill a missing result |
+| T33 | Cancel/crash after committed partial hash/outcome batches or during final commit, including mixed outcomes | No trusted component proof before atomic final commit; outcomes/results/comparisons/seal and COMPLETED state publish together or not at all; cancellation global CANCELLED, interrupted RUNNING later FAILED on explicit writable operation |
+| T34 | Wrong session/preflight hash/outcome/comparison join; tampered seal; missing/duplicate outcome, unexplained failure or comparison in INCOMPLETE component | Global integrity error/no trusted comparisons; another run's digest/outcome cannot fill missing evidence; finalization checks full file/outcome/pair coverage, bound reasons, dependency propagation and reproducible comparisons |
 | T35 | Source subset/overlap candidates and manual partial-component selection | Never admitted; component members/edges reproduce exact-only source closure |
 | T36 | Multi-member exact component | Every unordered pair once; no repeated per-edge source reads; deterministic IDs/order |
 | T37 | Non-chart empty multiset; file-directory conflict; case variants | Defined directory projection and all independent booleans exercised |
 | T38 | Completed preflight with rejected component plus admitted component | Preflight-only outputs, correct lower bounds, only whole admitted scope hashable |
-| T39 | Failed/stale/cancelled content report or report write failure | No trusted digests/equality outputs; report failure does not unseal evidence |
-| T40 | Golden canonical encoding, multiple insertion orders/cultures | Identical manifest identity for identical logical facts; any scoped fact change alters identity |
+| T39 | A: global FAILED/STALE/CANCELLED; B: coherent COMPLETED mixed content; C: all-INCOMPLETE coherent content; report write failure | A: scope NONE, no trusted digests/comparisons. B: scope COMPLETE_COMPONENTS_ONLY, comparisons/groups only for COMPLETE, INCOMPLETE outcomes/NULL booleans and all local diagnostics explicit; successful individual hashes distinguish file facts from eligibility. C: COMPLETED/exit 2, eligible 0, comparison/group headers only. Counts/session-result semantics correct; export failure returns 1 without unsealing evidence |
+| T40 | Golden preflight/content canonical encoding, multiple insertion orders/cultures, mixed COMPLETE/INCOMPLETE outcomes | Preflight encoding unchanged; identical logical facts yield identical identities. Content identity binds every outcome/result and explanatory diagnostic, including ERROR versus UNSTABLE with identical successful hash rows; changing outcome/failure facts changes the content digest, invalid combinations also fail integrity validation; COMPLETE-only comparisons reproduce from sealed inputs |
 
 Future optional stress tests are separate: million-entry inventories, huge
 files, worst-case component pair counts, low memory/disk space, HDD throughput,
