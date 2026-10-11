@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Reflection;
 
 namespace BmsLibraryAudit.Core;
 
@@ -115,7 +114,7 @@ public sealed class PhaseTwoPreflightRunner(IPhaseTwoFileSystem? fileSystem = nu
     }
 
     private static string Utc() => DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture);
-    private static string BuildSha() => typeof(PhaseTwoPreflightRunner).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+').ElementAtOrDefault(1) ?? "UNKNOWN";
+    private static string BuildSha() => PhaseTwoBuildProvenance.Current.EvidenceRevision;
     private static void StoreSource(PhaseTwoDatabase db, long session, CapturedPhaseOne source)
     {
         db.Insert("source_snapshots", "snapshot_id,preflight_id,repository_baseline_sha,phase1_implementation_sha,source_db_original_path,source_db_normalized_path,source_db_native_identity,source_db_size,source_db_sha256,source_db_before_mtime_ticks,source_db_after_mtime_ticks,source_application_id,source_schema_version,source_comparison_mode,source_scan_id,source_scan_started_utc,source_scan_completed_utc,admission_policy,seal_flag",

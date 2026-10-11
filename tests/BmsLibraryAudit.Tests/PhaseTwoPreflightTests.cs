@@ -202,6 +202,85 @@ public sealed class PhaseTwoPreflightTests
         }
     }
 
+    [WindowsPhaseTwoTheory]
+    [InlineData("stage='CONTENT',parent_preflight_id=1,accepted_manifest_sha256=printf('%064d',0)")]
+    [InlineData("session_id=100")]
+    [InlineData("parent_preflight_id=1")]
+    [InlineData("accepted_manifest_sha256=printf('%064d',0)")]
+    [InlineData("started_utc='changed'")]
+    [InlineData("tool_version='changed'")]
+    [InlineData("runtime_build_sha='changed'")]
+    [InlineData("source_component_count=99")]
+    public void RunningSessionIdentityCannotBeRewrittenByDirectSql(string assignment)
+    {
+        using var fixture = new Fixture();
+        using (var db = PhaseTwoDatabase.Open(fixture.Db, true))
+            db.Insert("sessions", "stage,state,started_utc,tool_version,runtime_build_sha,source_component_count", "PREFLIGHT", "RUNNING", "start", "test", "UNKNOWN", 0);
+        Assert.Throws<SqliteException>(() => fixture.Sql(fixture.Db, "UPDATE sessions SET " + assignment));
+        Assert.Equal("PREFLIGHT", fixture.Rows("SELECT stage FROM sessions").Single()[0]);
+        Assert.Null(fixture.Rows("SELECT accepted_manifest_sha256 FROM sessions").Single()[0]);
+    }
+
+    [WindowsPhaseTwoTheory]
+    [InlineData("COMPLETED")]
+    [InlineData("FAILED")]
+    [InlineData("CANCELLED")]
+    public void DirectSqlValidFinalizationAndTerminalImmutability(string terminal)
+    {
+        using var fixture = new Fixture();
+        using (var db = PhaseTwoDatabase.Open(fixture.Db, true))
+            db.Insert("sessions", "stage,state,started_utc,tool_version,runtime_build_sha,source_component_count", "PREFLIGHT", "RUNNING", "start", "test", "UNKNOWN", 0);
+        var digest = terminal == "COMPLETED" ? "'" + new string('a', 64) + "'" : "NULL";
+        fixture.Sql(fixture.Db, $"UPDATE sessions SET state='{terminal}',completed_utc='finish',final_evidence_digest={digest}");
+        foreach (var state in new[] { "RUNNING", "COMPLETED", "FAILED", "CANCELLED", "STALE" })
+            Assert.Throws<SqliteException>(() => fixture.Sql(fixture.Db, $"UPDATE sessions SET state='{state}'"));
+        Assert.Throws<SqliteException>(() => fixture.Sql(fixture.Db, "UPDATE sessions SET final_evidence_digest=printf('%064d',0)"));
+        Assert.Throws<SqliteException>(() => fixture.Sql(fixture.Db, "DELETE FROM sessions"));
+        Assert.Equal(terminal, fixture.Rows("SELECT state FROM sessions").Single()[0]);
+        Assert.Equal(terminal == "COMPLETED" ? new string('a', 64) : null, fixture.Rows("SELECT final_evidence_digest FROM sessions").Single()[0]);
+    }
+
+    [WindowsPhaseTwoTheory]
+    [InlineData("state='STALE',completed_utc='finish'")]
+    [InlineData("state='COMPLETED',completed_utc='finish'")]
+    [InlineData("state='COMPLETED',completed_utc='finish',final_evidence_digest='invalid'")]
+    [InlineData("state='FAILED',completed_utc='finish',final_evidence_digest=printf('%064d',0)")]
+    [InlineData("state='CANCELLED',completed_utc='finish',final_evidence_digest=printf('%064d',0)")]
+    [InlineData("final_evidence_digest=printf('%064d',0)")]
+    public void InvalidSessionPublicationIsRefused(string assignment)
+    {
+        using var fixture = new Fixture();
+        using (var db = PhaseTwoDatabase.Open(fixture.Db, true))
+            db.Insert("sessions", "stage,state,started_utc,tool_version,runtime_build_sha,source_component_count", "PREFLIGHT", "RUNNING", "start", "test", "UNKNOWN", 0);
+        Assert.Throws<SqliteException>(() => fixture.Sql(fixture.Db, "UPDATE sessions SET " + assignment));
+        Assert.Equal("RUNNING", fixture.Rows("SELECT state FROM sessions").Single()[0]);
+        Assert.Null(fixture.Rows("SELECT final_evidence_digest FROM sessions").Single()[0]);
+    }
+
+    [WindowsPhaseTwoFact]
+    public void PreviousSchemaIsRefusedWithoutAutomaticMigration()
+    {
+        using var fixture = new Fixture(); using (var db = PhaseTwoDatabase.Open(fixture.Db, true)) { }
+        fixture.Sql(fixture.Db, "DROP TRIGGER immutable_schema_delete; DELETE FROM schema_metadata WHERE key='schema_revision'; DROP TRIGGER session_initial_state; DROP TRIGGER immutable_session_identity; DROP TRIGGER session_state_transition;");
+        var before = System.IO.File.ReadAllBytes(fixture.Db); var mtime = System.IO.File.GetLastWriteTimeUtc(fixture.Db);
+        Assert.Throws<InvalidOperationException>(() => PhaseTwoDatabase.Open(fixture.Db, true));
+        Assert.Equal(before, System.IO.File.ReadAllBytes(fixture.Db)); Assert.Equal(mtime, System.IO.File.GetLastWriteTimeUtc(fixture.Db));
+    }
+
+    [Theory]
+    [InlineData("CLEAN", "CLEAN")]
+    [InlineData("DIRTY", "DIRTY")]
+    [InlineData(null, "UNKNOWN")]
+    [InlineData("untrusted", "UNKNOWN")]
+    public void BuildRevisionCannotMasqueradeAsCleanCommit(string? metadata, string expected)
+    {
+        var sha = new string('a', 40); var provenance = PhaseTwoBuildProvenance.Resolve("0.1.0+" + sha, metadata);
+        Assert.Equal(expected, provenance.State); Assert.Equal(sha, provenance.Revision);
+        Assert.Equal(expected == "CLEAN" ? sha : expected == "DIRTY" ? "UNKNOWN_DIRTY" : "UNKNOWN", provenance.EvidenceRevision);
+        Assert.Equal("UNKNOWN", PhaseTwoBuildProvenance.Resolve("0.1.0", "CLEAN").EvidenceRevision);
+        Assert.Equal("UNKNOWN", PhaseTwoBuildProvenance.Resolve("0.1.0+bad", "CLEAN").EvidenceRevision);
+    }
+
     [WindowsPhaseTwoFact]
     public void SourceGuardPreventsConcurrentMutationAndCaptureFingerprintsMatch()
     {

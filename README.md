@@ -62,3 +62,22 @@ Real-library Phase 2A execution requires separate authorization. Preflight
 admission is metadata evidence, with no package-equivalence or mutation claim.
 See [the Phase 2A implementation report](docs/PHASE_2A_IMPLEMENTATION_REPORT.md)
 and [the governing design contract](docs/PHASE_2_READ_ONLY_EXACT_CANDIDATE_FILESYSTEM_EVIDENCE_CONTRACT.md).
+
+Deferred research: [Backbeat interoperability and library completeness](docs/BACKBEAT_INTEROPERABILITY_RESEARCH_NOTE.md)
+is a research record with no current integration or mutation authorization.
+
+Synthetic performance checks are separate from unit tests. With Windows
+PowerShell 7+, run `./scripts/Start-Phase2A-PerformanceTest.ps1 -Profile QUICK -Synchronous`
+or start an autonomous bounded run:
+
+```powershell
+./scripts/Start-Phase2A-PerformanceTest.ps1 -Profile EXTENDED -Seed 1729 -NestedRoots -TimeoutMinutes 60
+./scripts/Get-Phase2A-PerformanceTest.ps1 -RunDirectory <printed-run-directory>
+./scripts/Get-Phase2A-PerformanceTest.ps1 -RunDirectory <printed-run-directory> -Cancel
+```
+
+The launcher returns the supervisor PID and an owned run directory under
+`.artifacts/phase2a-performance`. The independent supervisor records completion,
+failure, timeout or cancellation; no open shell or Codex monitoring is required.
+See [corrective hardening and performance](docs/PHASE_2A_CORRECTIVE_HARDENING_AND_PERFORMANCE_REPORT.md)
+for limits, schema incompatibility, build provenance and validation evidence.

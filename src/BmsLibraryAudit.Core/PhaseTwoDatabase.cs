@@ -81,7 +81,7 @@ internal sealed class PhaseTwoDatabase : IDisposable
         RequireScalar(connection, "PRAGMA application_id", ApplicationId); RequireScalar(connection, "PRAGMA user_version", 1);
         using var command = connection.CreateCommand();
         foreach (var (key, value) in new[] { ("tool", "BmsLibraryAudit.Phase2"), ("contract_version", ContractVersion),
-            ("absolute_comparison_mode", AbsoluteMode), ("relative_comparison_mode", RelativeMode), ("capabilities", "PREFLIGHT_ONLY") })
+            ("absolute_comparison_mode", AbsoluteMode), ("relative_comparison_mode", RelativeMode), ("capabilities", "PREFLIGHT_ONLY"), ("schema_revision", "phase2a-hardening-1") })
         {
             command.CommandText = "SELECT value FROM schema_metadata WHERE key=$key";
             command.Parameters.Clear(); command.Parameters.AddWithValue("$key", key);
@@ -147,7 +147,7 @@ internal sealed class PhaseTwoDatabase : IDisposable
         Execute($"PRAGMA application_id={ApplicationId}; PRAGMA user_version=1");
         Execute(Schema);
         foreach (var (key, value) in new[] { ("tool", "BmsLibraryAudit.Phase2"), ("schema_version", "1"), ("contract_version", ContractVersion),
-            ("absolute_comparison_mode", AbsoluteMode), ("relative_comparison_mode", RelativeMode), ("capabilities", "PREFLIGHT_ONLY") })
+            ("absolute_comparison_mode", AbsoluteMode), ("relative_comparison_mode", RelativeMode), ("capabilities", "PREFLIGHT_ONLY"), ("schema_revision", "phase2a-hardening-1") })
             Insert("schema_metadata", "key,value", key, value);
         foreach (var table in new[] { "source_snapshots", "source_library_roots", "source_charts", "source_diagnostics", "candidate_components",
             "observation_roots", "component_memberships", "source_exact_edges", "chart_revalidations", "direct_chart_memberships",
@@ -171,6 +171,20 @@ internal sealed class PhaseTwoDatabase : IDisposable
         Execute("""
             CREATE TRIGGER content_not_implemented BEFORE INSERT ON sessions WHEN NEW.stage='CONTENT'
             BEGIN SELECT RAISE(ABORT,'Phase 2B is not implemented or authorized'); END;
+            CREATE TRIGGER session_initial_state BEFORE INSERT ON sessions WHEN NEW.state<>'RUNNING' OR NEW.final_evidence_digest IS NOT NULL
+            BEGIN SELECT RAISE(ABORT,'Sessions must start RUNNING without accepted evidence'); END;
+            CREATE TRIGGER immutable_session_identity BEFORE UPDATE ON sessions
+            WHEN NEW.session_id IS NOT OLD.session_id OR NEW.stage IS NOT OLD.stage
+              OR NEW.parent_preflight_id IS NOT OLD.parent_preflight_id OR NEW.accepted_manifest_sha256 IS NOT OLD.accepted_manifest_sha256
+              OR NEW.started_utc IS NOT OLD.started_utc OR NEW.tool_version IS NOT OLD.tool_version
+              OR NEW.runtime_build_sha IS NOT OLD.runtime_build_sha OR NEW.source_component_count IS NOT OLD.source_component_count
+            BEGIN SELECT RAISE(ABORT,'Session identity and stage are immutable'); END;
+            CREATE TRIGGER session_state_transition BEFORE UPDATE ON sessions
+            WHEN OLD.state='RUNNING' AND (NEW.state NOT IN ('RUNNING','COMPLETED','FAILED','CANCELLED')
+              OR (NEW.state<>'COMPLETED' AND NEW.final_evidence_digest IS NOT NULL)
+              OR (NEW.state='COMPLETED' AND (NEW.final_evidence_digest IS NULL OR length(NEW.final_evidence_digest)<>64
+                  OR NEW.final_evidence_digest GLOB '*[^0-9a-f]*')))
+            BEGIN SELECT RAISE(ABORT,'Invalid Phase 2A state transition or final evidence'); END;
             CREATE TRIGGER sealed_session_update BEFORE UPDATE ON sessions WHEN OLD.state<>'RUNNING'
             BEGIN SELECT RAISE(ABORT,'Terminal session is immutable'); END;
             CREATE TRIGGER sealed_session_delete BEFORE DELETE ON sessions

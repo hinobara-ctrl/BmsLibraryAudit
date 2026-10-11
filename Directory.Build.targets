@@ -1,0 +1,28 @@
+<Project>
+  <!-- SDK SourceRevisionId identifies a Git revision, but does not attest to a
+       clean tree. Bind Phase 2 evidence conservatively at build time. -->
+  <Target Name="CapturePhaseTwoBuildState" BeforeTargets="GetAssemblyAttributes"
+          DependsOnTargets="InitializeSourceControlInformation"
+          Condition="'$(MSBuildProjectName)' == 'BmsLibraryAudit.Core'">
+    <PropertyGroup><_PhaseTwoBuildState>UNKNOWN</_PhaseTwoBuildState></PropertyGroup>
+    <Exec Command="git rev-parse HEAD" WorkingDirectory="$(MSBuildThisFileDirectory)" ConsoleToMSBuild="true"
+          IgnoreExitCode="true" StandardOutputImportance="Low" StandardErrorImportance="Low">
+      <Output TaskParameter="ConsoleOutput" ItemName="_PhaseTwoGitHead" />
+      <Output TaskParameter="ExitCode" PropertyName="_PhaseTwoHeadExit" />
+    </Exec>
+    <Exec Command="git status --porcelain --untracked-files=normal" WorkingDirectory="$(MSBuildThisFileDirectory)" ConsoleToMSBuild="true"
+          IgnoreExitCode="true" StandardOutputImportance="Low" StandardErrorImportance="Low">
+      <Output TaskParameter="ConsoleOutput" ItemName="_PhaseTwoGitStatus" />
+      <Output TaskParameter="ExitCode" PropertyName="_PhaseTwoStatusExit" />
+    </Exec>
+    <PropertyGroup Condition="'$(_PhaseTwoHeadExit)' == '0' and '$(_PhaseTwoStatusExit)' == '0' and '$(SourceRevisionId)' != '' and '@(_PhaseTwoGitHead)' == '$(SourceRevisionId)'">
+      <_PhaseTwoBuildState Condition="'@(_PhaseTwoGitStatus)' == ''">CLEAN</_PhaseTwoBuildState>
+      <_PhaseTwoBuildState Condition="'@(_PhaseTwoGitStatus)' != ''">DIRTY</_PhaseTwoBuildState>
+    </PropertyGroup>
+    <ItemGroup>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>PhaseTwoBuildState</_Parameter1><_Parameter2>$(_PhaseTwoBuildState)</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
+</Project>
