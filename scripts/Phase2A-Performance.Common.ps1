@@ -2,7 +2,8 @@
 # PowerShell 7 is required; no external data, network or cleanup is supported.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-if (-not $IsWindows -or $PSVersionTable.PSVersion.Major -lt 7) { throw 'Windows PowerShell 7+ is required.' }
+if ($PSVersionTable.PSVersion.Major -lt 7) { throw 'Phase 2A benchmarks require PowerShell 7 or later; Windows PowerShell 5.1 is not supported.' }
+if (-not $IsWindows) { throw 'Phase 2A benchmarks require Windows and PowerShell 7 or later.' }
 $script:BenchmarkRepository = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
 $script:BenchmarkRoot = Join-Path $script:BenchmarkRepository '.artifacts/phase2a-performance'
 $script:BenchmarkEncoding = [Text.UTF8Encoding]::new($false)

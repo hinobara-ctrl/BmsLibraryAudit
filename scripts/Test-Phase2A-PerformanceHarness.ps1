@@ -8,15 +8,25 @@ foreach ($taskScript in Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*Perfo
     $null=[Management.Automation.Language.Parser]::ParseFile($taskScript.FullName,[ref]$taskTokens,[ref]$taskParseErrors)
     if ($taskParseErrors.Count) { throw "PowerShell parse errors: $taskParseErrors" }
 }
-# Compare non-whitespace substantive text to committed research, decoding only
-# its accidental Markdown escapes/entities. This also preserves URLs and SHAs.
-$taskOld=(& git -C $script:BenchmarkRepository show HEAD:docs/BACKBEAT_INTEROPERABILITY_RESEARCH_NOTE.md) -join "`n"
+# Freeze the reference to the original research, before Markdown correction.
+# HEAD contains the corrected document and cannot establish its preservation.
+$taskHistoricalReference='808a19e7547776b12d9df1165b6d0744a5bb2404:docs/BACKBEAT_INTEROPERABILITY_RESEARCH_NOTE.md'
+$taskOriginalLines=@(& git -C $script:BenchmarkRepository show $taskHistoricalReference)
+if ($LASTEXITCODE -ne 0 -or $taskOriginalLines.Count -eq 0) { throw "Historical Backbeat reference unavailable: $taskHistoricalReference. Preservation cannot be skipped." }
+$taskOld=$taskOriginalLines -join "`n"
 $taskExpected=[regex]::Replace($taskOld,'\\([#*\[\]_.\-])','$1').Replace('&#x20;',' ')
 $taskNote=Get-Content -LiteralPath (Join-Path $script:BenchmarkRepository 'docs/BACKBEAT_INTEROPERABILITY_RESEARCH_NOTE.md') -Raw
 if ([regex]::Replace($taskExpected,'\s','') -cne [regex]::Replace($taskNote,'\s','') -or
     $taskNote -match '\\[#*\[_\-]|&#x20;|\n\s*\n\s*\n') { throw 'Research text preservation/formatting check failed.' }
 if (@([regex]::Matches($taskNote,'(?m)^```')).Count % 2) { throw 'Unbalanced Markdown fences.' }
-$taskChecks.Add([ordered]@{check='Markdown substantive preservation and syntax';passed=$true})
+# Check Markdown structure independently of whitespace-insensitive prose:
+# missing heading/link separators must not pass as substantive preservation.
+foreach ($taskPattern in @('(?m)^#{1,6} [^\r\n]+','\[[^\]\r\n]+\]\([^\s)]+\)','(?m)^```[^\r\n]*','https://[^\s)]+','\b[0-9a-f]{40}\b')) {
+    $taskExpectedTokens=@([regex]::Matches($taskExpected,$taskPattern) | ForEach-Object { $_.Value.TrimEnd() })
+    $taskActualTokens=@([regex]::Matches($taskNote,$taskPattern) | ForEach-Object { $_.Value.TrimEnd() })
+    if ($taskExpectedTokens.Count -eq 0 -or ($taskExpectedTokens -join "`n") -cne ($taskActualTokens -join "`n")) { throw "Research Markdown structure/reference mismatch: $taskPattern" }
+}
+$taskChecks.Add([ordered]@{check='Markdown substantive preservation and syntax';reference=$taskHistoricalReference;passed=$true})
 foreach ($taskForeign in @($script:BenchmarkRepository, (Join-Path $script:BenchmarkRoot 'not-a-run'))) {
     $taskRejected=$false
     try { $null=Get-OwnedBenchmark $taskForeign } catch { $taskRejected=$true }
