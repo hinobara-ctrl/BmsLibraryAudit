@@ -84,10 +84,15 @@ public static partial class ReportInputs
         ProcessingPolicy policy, Func<IEnumerable<string[]>, T> parse, CancellationToken cancellation) where T : class
     {
         policy.Validate();
+        if (cancellation.IsCancellationRequested)
+            return new(kind, 0, null, null, ParseStatus.Cancelled, new(FindingKind.Pending, "CANCELLED", "No complete report fingerprint."));
         if (bytes.Length > policy.MaxInputBytes)
             return new(kind, 0, null, null, ParseStatus.ResourceStopped, new(FindingKind.ResourceLimit, "INPUT_BYTE_LIMIT", "Buffer budget exceeded; no parsing occurred."));
-        using var input = new MemoryInput(bytes);
-        return Csv(kind, input, header, policy, parse, cancellation, bytes.Length);
+        // ReadOnlyMemory may wrap mutable caller storage. Own one bounded snapshot
+        // before any chunk is parsed/hashed; this does not attest an atomic native acquisition.
+        var snapshot = bytes.ToArray();
+        using var input = new MemoryInput(snapshot);
+        return Csv(kind, input, header, policy, parse, cancellation, snapshot.Length);
     }
     private static ReportEvidence<T> Csv<T>(ReportKind kind, Stream input, IReadOnlyList<string> header,
         ProcessingPolicy policy, Func<IEnumerable<string[]>, T> parse, CancellationToken cancellation, long? expectedByteCount) where T : class
@@ -107,7 +112,5 @@ public static partial class ReportInputs
         catch (EvidenceException ex) { return new(kind, reader.BytesConsumed, null, null, Status(ex.Kind), new(ex.Kind, ex.Code, "Report parsing did not complete."), reader.EndOfInputObserved); }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         { return new(kind, reader.BytesConsumed, null, null, ParseStatus.Cancelled, new(FindingKind.Pending, "CANCELLED", "No complete report fingerprint."), reader.EndOfInputObserved); }
-        catch (IOException)
-        { return new(kind, reader.BytesConsumed, null, null, ParseStatus.Unsupported, new(FindingKind.Pending, "INPUT_READ_FAILED", "Caller stream failed; report consumption incomplete."), reader.EndOfInputObserved); }
     }
 }

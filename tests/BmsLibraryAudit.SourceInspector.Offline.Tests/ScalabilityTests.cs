@@ -15,8 +15,47 @@ public sealed class BoundedStressCollection;
 [Collection("BoundedStress")]
 public sealed class ScalabilityTests(ITestOutputHelper output)
 {
+    [Theory]
+    [InlineData("resource")] [InlineData("environment")] [InlineData("failed_execution")]
+    public void AdmissionAccountingIsVerifiedWithoutLargeAllocations(string outcome)
+    {
+        var emitted = new List<string>(); var started = false;
+        // Inject tiny budgets; this test never allocates the requested chart population.
+        var admitted = outcome != "resource";
+        var execution = new StressExecution(emitted.Add, "accounting-control-" + outcome, "synthetic control", 1, 2, admitted,
+            "Explicit " + outcome + " record independent of a passing framework assertion", "CONTROL");
+        if (outcome == "resource")
+        {
+            Assert.False(StressExecution.Fits(2, 1, 100));
+            using (execution)
+            {
+                Assert.False(execution.Admitted);
+                Assert.Throws<InvalidOperationException>(execution.Start);
+                Assert.Throws<InvalidOperationException>(() => execution.Complete("EXECUTED_PASS", "forbidden", "elapsed_ms=0"));
+            }
+        }
+        else if (outcome == "environment")
+        {
+            using (execution) execution.BlockEnvironment("Synthetic environment unavailable; no allocation attempted.");
+        }
+        else
+        {
+            Assert.IsType<InvalidOperationException>(Record.Exception((Action)(() =>
+            {
+                using (execution) { execution.Start(); started = true; throw new InvalidOperationException("independent controlled failure"); }
+            })));
+        }
+        var line = Assert.Single(emitted);
+        var parsed = System.Text.Json.JsonSerializer.Deserialize<StressExecutionRecord>(line[StressExecution.Prefix.Length..])!;
+        Assert.Equal(started, parsed.WorkloadExecuted); Assert.Equal("CONTROL", parsed.Purpose);
+        Assert.Equal("REQUIRES_TRX_CORRELATION", parsed.TestRunnerStatus);
+        Assert.Equal(outcome switch { "resource" => "NOT_EXECUTED_RESOURCE_GATE", "environment" => "BLOCKED_ENVIRONMENT", _ => "EXECUTED_FAIL" }, parsed.ActualOutcome);
+        Assert.NotNull(parsed.Reason);
+        if (!started) { Assert.Null(parsed.ElapsedMilliseconds); Assert.Null(parsed.Measurements); }
+        output.WriteLine(line); // The separate TRX audit resolves the actual runner status.
+    }
     private const long RunBudget = 1024L * 1024 * 1024;
-    private static bool Fits(long estimate) => estimate <= RunBudget && estimate < GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / 3;
+    private static bool Fits(long estimate) => StressExecution.Fits(estimate, RunBudget, GC.GetGCMemoryInfo().TotalAvailableMemoryBytes);
     private sealed class Measurement : IDisposable
     {
         private readonly long allocated = GC.GetTotalAllocatedBytes(true);
@@ -62,7 +101,10 @@ public sealed class ScalabilityTests(ITestOutputHelper output)
         var contributions = shared ? 16L * folderCount * (folderCount - 1) / 2 : 0;
         var expectedPairs = shared ? folderCount * (folderCount - 1) / 2 : 0;
         output.WriteLine($"PLAN charts={count}; folders={folderCount}; estimate={estimate}; run_budget={RunBudget}; contributions={contributions}; pairs={expectedPairs}; gc_available={GC.GetGCMemoryInfo().TotalAvailableMemoryBytes}");
-        if (!Fits(estimate)) { output.WriteLine("STRESS NOT_EXECUTED: conservative runner envelope insufficient; no fixture allocation."); return; }
+        using var execution = new StressExecution(output.WriteLine, $"charts-{count}-{folderCount}-{shared}", "charts", count, estimate, Fits(estimate),
+            $"folders={folderCount}; hashes={(shared ? 16 : folderCount)}; contributions={contributions}; pairs={expectedPairs}; complete exact closure");
+        if (!execution.Admitted) return;
+        execution.Start();
         using var measurement = new Measurement();
         var charts = Population(count, folderCount, shared);
         var policy = Fixtures.Policy with { MaxChartRecords = count, MaxFolders = folderCount };
@@ -83,11 +125,14 @@ public sealed class ScalabilityTests(ITestOutputHelper output)
         }
         else Assert.Empty(analysis.Components);
         output.WriteLine($"STRESS PASSED complete=true; charts={count}; hashes={(shared ? 16 : folderCount)}; contributions={contributions}; pairs={expectedPairs}; {measurement.Finish()}");
+        execution.Complete("EXECUTED_PASS", "Full provenance and relationship oracles passed.", measurement.Finish());
     }
     [Fact]
     public void InitialMillionChartEstimateIsRejectedBeforeCalibration()
     {
         var estimate = 1_000_000L * 1536 + 25_000L * 4096;
+        using var execution = new StressExecution(output.WriteLine, "initial-million-admission", "charts", 1000000, estimate, Fits(estimate),
+            "Reject initial estimate above the unchanged 1 GiB budget without chart allocation.", "ADMISSION_PLANNER");
         Assert.True(estimate > RunBudget);
         output.WriteLine($"INITIAL PLAN NOT_EXECUTED charts=1000000; estimated_bytes={estimate}; run_budget={RunBudget}; reason=uncalibrated retention estimate exceeds per-run budget. A separately measured 500k profile justifies the revised million-row experiment; not all million-row distributions are admitted.");
     }
@@ -97,7 +142,10 @@ public sealed class ScalabilityTests(ITestOutputHelper output)
         const int count = 250000, folders = 25000;
         const long estimate = 750000000;
         output.WriteLine($"PLAN charts={count}; folders={folders}; hashes={count}; contributions=0; pairs=0; estimate={estimate}");
-        if (!Fits(estimate)) { output.WriteLine("STRESS NOT_EXECUTED: insufficient runner envelope."); return; }
+        using var execution = new StressExecution(output.WriteLine, "unique-hashes-250000", "charts", count, estimate, Fits(estimate),
+            "25000 folders; 250000 distinct hashes; zero duplicate groups/pairs/components");
+        if (!execution.Admitted) return;
+        execution.Start();
         using var measurement = new Measurement();
         var charts = Population(count, folders, false);
         for (var i = 0; i < charts.Length; i++) charts[i] = charts[i] with { Sha256 = i.ToString("x64", CultureInfo.InvariantCulture), Md5 = i.ToString("x32", CultureInfo.InvariantCulture) };
@@ -108,11 +156,14 @@ public sealed class ScalabilityTests(ITestOutputHelper output)
         Assert.All(result.Folders, f => Assert.Equal(10, f.Hashes.Count));
         Assert.Empty(result.Duplicates); Assert.Empty(result.Candidates); Assert.Empty(result.Components);
         output.WriteLine($"STRESS PASSED complete=true; charts={count}; hashes={count}; contributions=0; pairs=0; {measurement.Finish()}");
+        execution.Complete("EXECUTED_PASS", "Every default-envelope count and folder set passed.", measurement.Finish());
     }
     [Fact]
     public void DensePairsFitDeclaredBudgetWithoutLosingExactClosure()
     {
         const int folders = 447, pairs = 99681;
+        using var execution = new StressExecution(output.WriteLine, "dense-pairs-447", "charts", folders, 80000000, true,
+            "99681 exact pairs; two complete 447-member components"); execution.Start();
         output.WriteLine("PLAN charts=447; folders=447; hashes=1; contributions=99681; pairs=99681; estimated_bytes=80000000");
         using var measurement = new Measurement();
         var charts = Population(folders, folders, false);
@@ -121,10 +172,13 @@ public sealed class ScalabilityTests(ITestOutputHelper output)
         Assert.Equal(pairs, result.Candidates.Count); Assert.All(result.Candidates, c => Assert.Equal("EXACT_CHART_SET", c.Relationship));
         Assert.Equal(2, result.Components.Count); Assert.All(result.Components, c => Assert.Equal(folders, c.Members.Count));
         output.WriteLine("STRESS PASSED complete=true; contributions=99681; pairs=99681; " + measurement.Finish());
+        execution.Complete("EXECUTED_PASS", "Full dense pair and closure assertions passed.", measurement.Finish());
     }
     [Fact]
     public void CancellationDuringLargeChartProcessingReturnsNoAnalysis()
     {
+        using var execution = new StressExecution(output.WriteLine, "chart-cancellation-150000", "charts", 150000, 234496000, true,
+            "Owned cancellation at visited chart 100001; no analysis"); execution.Start();
         output.WriteLine("PLAN charts=150000; folders=1000; cancel_on_chart=100001; estimated_bytes=234496000; pair_work=0");
         using var cancel = new CancellationTokenSource(); using var measurement = new Measurement();
         var charts = Population(150000, 1000, false);
@@ -132,6 +186,7 @@ public sealed class ScalabilityTests(ITestOutputHelper output)
         Assert.Throws<OperationCanceledException>(() => Relationships.Analyze(source, [], Fixtures.Policy, cancel.Token));
         Assert.Equal(100001, source.Visited);
         output.WriteLine("STRESS CANCELLED complete=false; visited_charts=100001; " + measurement.Finish());
+        execution.Complete("CANCELLED_EXPECTED", "Cancellation observed at chart 100001; no analysis returned.", measurement.Finish());
     }
     private sealed class CancelCharts(Chart[] rows, CancellationTokenSource cancellation) : IReadOnlyList<Chart>
     {
@@ -148,6 +203,8 @@ public sealed class ScalabilityTests(ITestOutputHelper output)
     public void HighlySharedHashStopsBeforeQuadraticPairAllocation()
     {
         const int folders = 10000;
+        using var execution = new StressExecution(output.WriteLine, "shared-hash-10000", "charts", folders, 56320000, true,
+            "49995000 contributions; PAIR_EXPANSION_LIMIT before materialized pairs"); execution.Start();
         output.WriteLine("PLAN charts=10000; folders=10000; hashes=1; contributions=49995000; materialized_pairs=0; estimated_bytes=56320000");
         using var measurement = new Measurement();
         var charts = Population(folders, folders, false).Select(c => c with { Sha256 = Fixtures.Hash('a') }).ToArray();
@@ -155,11 +212,14 @@ public sealed class ScalabilityTests(ITestOutputHelper output)
         Assert.Contains(result.Findings, f => f.Code == "PAIR_EXPANSION_LIMIT" && f.Kind == FindingKind.ResourceLimit);
         Assert.False(result.CompletedLogicalScope); Assert.False(result.LogicalAgreement); Assert.Null(result.Analysis);
         output.WriteLine("STRESS RESOURCE_BLOCKED complete=false; materialized_pairs=0; " + measurement.Finish());
+        execution.Complete("RESOURCE_STOP_EXPECTED", "PAIR_EXPANSION_LIMIT; incomplete reconciliation; no analysis.", measurement.Finish());
     }
     [Fact]
     public void ManySparseRelationshipsPreserveTransitiveClosureAndExactLabels()
     {
         const int folders = 20000;
+        using var execution = new StressExecution(output.WriteLine, "sparse-chain-20000", "charts", 39998, 143357952, true,
+            "19999 pairs; one complete 20000-member RELATED component; no EXACT_ONLY"); execution.Start();
         output.WriteLine("PLAN charts=39998; folders=20000; hashes=19999; contributions=19999; pairs=19999; estimated_bytes=143357952");
         using var measurement = new Measurement();
         var charts = new List<Chart>(2 * folders - 2);
@@ -175,10 +235,13 @@ public sealed class ScalabilityTests(ITestOutputHelper output)
         Assert.Equal("A_SUBSET_OF_B", analysis.Candidates[0].Relationship); Assert.Equal("B_SUBSET_OF_A", analysis.Candidates[^1].Relationship);
         Assert.All(analysis.Candidates.Skip(1).SkipLast(1), c => Assert.Equal("MEDIUM_OVERLAP", c.Relationship));
         output.WriteLine("STRESS PASSED complete=true; contributions=19999; pairs=19999; " + measurement.Finish());
+        execution.Complete("EXECUTED_PASS", "Sparse pair labels and full transitive closure passed.", measurement.Finish());
     }
     [Fact]
     public void SeveralLargeExactComponentsKeepFullOrderedMembers()
     {
+        using var execution = new StressExecution(output.WriteLine, "four-exact-components", "charts", 800, 11000000, true,
+            "19800 exact pairs; four RELATED and four EXACT_ONLY components, 100 ordered members each"); execution.Start();
         output.WriteLine("PLAN charts=800; folders=400; hashes=8; contributions=39600; pairs=19800; estimated_bytes=11000000");
         using var measurement = new Measurement();
         var charts = new List<Chart>();
@@ -195,12 +258,15 @@ public sealed class ScalabilityTests(ITestOutputHelper output)
             Assert.Equal(Enumerable.Range(0, 100).Select(f => Fixtures.RootPath + $"\\G{group}\\F{f:D3}"), result.Components[group + 4].Members);
         }
         output.WriteLine("STRESS PASSED complete=true; contributions=39600; pairs=19800; " + measurement.Finish());
+        execution.Complete("EXECUTED_PASS", "Every pair label and complete ordered exact component passed.", measurement.Finish());
     }
     [Theory]
     [InlineData(false)] [InlineData(true)]
     public void LargeCsvUsesGeneratedStreamWithLateMalformedRecord(bool malformed)
     {
         const int rows = 250000;
+        using var execution = new StressExecution(output.WriteLine, "cluster-csv-250000-" + (malformed ? "malformed" : "valid"), "rows", rows, 128000000, true,
+            malformed ? "Late malformed record; no complete digest/value" : "250000 ordered rows; exact independently computed SHA-256/count"); execution.Start();
         output.WriteLine("PLAN rows=250000; estimated_retained_bytes=128000000; text_buffer=65536; pair_work=0");
         using var expected = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         long byteCount = 0;
@@ -220,23 +286,30 @@ public sealed class ScalabilityTests(ITestOutputHelper output)
             for (var i = 0; i < rows; i++) Assert.Equal(new ClusterRow("RELATED", $"RELATED_{i / 2 + 1:D6}", 2, $"C:\\Synthetic\\R{i:D6}"), parsed.Value[i]);
         }
         output.WriteLine($"STRESS {(malformed ? "MALFORMED_EXPECTED" : "PASSED")}; complete={parsed.ParsingComplete}; input_bytes={byteCount}; consumed_bytes={parsed.BytesConsumed}; {measurement.Finish()}");
+        execution.Complete("EXECUTED_PASS", $"Strict parser outcome={parsed.Status}; consumed_bytes={parsed.BytesConsumed}; independent oracle passed.", measurement.Finish());
     }
     [Fact]
     public void CancellationDuringLargeCsvStopsWithNoCompleteFingerprint()
     {
+        using var execution = new StressExecution(output.WriteLine, "csv-cancellation-250000", "rows", 250000, 16000000, true,
+            "Cancellation after 1048576 consumed bytes; no complete digest/value"); execution.Start();
         output.WriteLine("PLAN rows=250000; cancel_after_bytes=1048576; estimated_retained_bytes=16000000; pair_work=0");
         using var cancel = new CancellationTokenSource(); using var measurement = new Measurement();
         using var input = new GeneratedStream(Lines(250000, false), bytes => { if (bytes >= 1048576) cancel.Cancel(); });
         var parsed = ReportInputs.Clusters(input, Fixtures.Policy with { MaxReportRows = 250000 }, cancel.Token);
         Assert.Equal(ParseStatus.Cancelled, parsed.Status); Assert.Null(parsed.Sha256); Assert.Null(parsed.Value);
         output.WriteLine($"STRESS CANCELLED complete=false; consumed_bytes={parsed.BytesConsumed}; {measurement.Finish()}");
+        execution.Complete("CANCELLED_EXPECTED", $"Cancelled; consumed_bytes={parsed.BytesConsumed}; digest/value absent.", measurement.Finish());
     }
     [Fact]
     public void LargeDuplicateCsvFitsDefaultStreamingEnvelopeWithEveryPhysicalRow()
     {
         const int rows = 250000;
         output.WriteLine("PLAN duplicate_rows=250000; estimate=400000000; retained_text_budget=67108864; pair_work=0");
-        if (!Fits(400000000)) { output.WriteLine("STRESS NOT_EXECUTED: insufficient runner envelope."); return; }
+        using var execution = new StressExecution(output.WriteLine, "duplicate-csv-250000", "rows", rows, 400000000, Fits(400000000),
+            "250000 complete physical rows; exact byte count/SHA and ordered tuples");
+        if (!execution.Admitted) return;
+        execution.Start();
         var sha = Fixtures.Hash('a'); var md5 = new string('b', 32);
         IEnumerable<string> DuplicateLines()
         {
@@ -254,6 +327,7 @@ public sealed class ScalabilityTests(ITestOutputHelper output)
         for (var i = 0; i < rows; i++) Assert.Equal(new DuplicateRow(sha, md5, rows, 1, $"C:\\Synthetic\\A\\c{i:D6}.bms",
             @"C:\Synthetic\A", $"c{i:D6}.bms", ".bms", 1, "2020-01-01T00:00:00.0000000+00:00"), result.Value[i]);
         output.WriteLine($"STRESS PASSED complete=true; duplicate_rows={rows}; input_bytes={byteCount}; {measurement.Finish()}");
+        execution.Complete("EXECUTED_PASS", $"All physical tuples passed; consumed_bytes={result.BytesConsumed}.", measurement.Finish());
     }
     private static IEnumerable<string> Lines(int rows, bool malformed)
     {

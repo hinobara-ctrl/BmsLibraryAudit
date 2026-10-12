@@ -32,7 +32,7 @@ internal sealed class IncrementalCsv(Stream input, ProcessingPolicy policy, Canc
         while (true)
         {
             cancellation.ThrowIfCancellationRequested();
-            var count = input.Read(buffer, 0, buffer.Length);
+            var count = ReadInput(buffer);
             if (count == 0) EndOfInputObserved = true;
             BytesConsumed = checked(BytesConsumed + count);
             policy.Limit(BytesConsumed > policy.MaxStreamBytes, "STREAM_BYTE_LIMIT");
@@ -90,6 +90,14 @@ internal sealed class IncrementalCsv(Stream input, ProcessingPolicy policy, Canc
         CompleteDigest = Convert.ToHexStringLower(hash.GetHashAndReset());
     }
     public void Dispose() => hash.Dispose();
+    private int ReadInput(byte[] buffer)
+    {
+        // Translate only known acquisition/lifecycle failures from this exact call.
+        // Argument errors, defects, OOM and unowned cancellation remain observable.
+        try { return input.Read(buffer, 0, buffer.Length); }
+        catch (Exception ex) when (ex is IOException or ObjectDisposedException or NotSupportedException or UnauthorizedAccessException)
+        { throw new EvidenceException(FindingKind.Pending, "INPUT_READ_FAILED"); }
+    }
 }
 
 internal sealed class MemoryInput(ReadOnlyMemory<byte> bytes) : Stream
