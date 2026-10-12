@@ -18,11 +18,19 @@ public sealed record Candidate(string FolderA, string FolderB, int PhysicalA, in
 public sealed record Component(string Kind, string Id, IReadOnlyList<string> Members);
 public sealed record Analysis(IReadOnlyList<Folder> Folders, IReadOnlyList<DuplicateGroup> Duplicates,
     IReadOnlyList<Candidate> Candidates, IReadOnlyList<Component> Components, IReadOnlyList<string> IncompleteFolders);
-public enum FindingKind { Invalid, Mismatch, Pending, ResourceLimit }
+public enum FindingKind { Invalid, Mismatch, Pending, ResourceLimit, ScopeChanged }
+public sealed record ScanScopeChange(long ExpectedScan, long ActualLatestCompletedScan, bool ExpectedScanPresent)
+{
+    public string FutureNativeDisposition => "INSPECTOR_BLOCKED";
+}
 public sealed record Finding(FindingKind Kind, string Code, string Detail);
 public sealed record LogicalValidation(Scan? Latest, IReadOnlyList<Finding> Findings)
 {
     public bool Valid => Findings.All(f => f.Kind == FindingKind.Pending);
+    public ScanScopeChange? ScopeChange { get; init; }
+    // Corrupt logical facts take precedence over a concurrent scope change.
+    public FindingKind? PrimaryStop => Findings.Any(f => f.Kind == FindingKind.Invalid) ? FindingKind.Invalid :
+        ScopeChange is not null ? FindingKind.ScopeChanged : Findings.Any(f => f.Kind == FindingKind.ResourceLimit) ? FindingKind.ResourceLimit : null;
 }
 public sealed record OfflineResult(bool CompletedLogicalScope, bool LogicalAgreement, IReadOnlyList<Finding> Findings,
     Analysis? Analysis, FormatRecognition? SummaryFormat)
@@ -30,16 +38,23 @@ public sealed record OfflineResult(bool CompletedLogicalScope, bool LogicalAgree
     public string InspectorStatus => "INSPECTOR_PARTIAL";
     public bool NativeInspectionComplete => false;
     public bool Phase2ExecutionAuthorized => false;
+    public ScanScopeChange? ScopeChange { get; init; }
+    public ReportBindings? ReportEvidence { get; init; }
 }
 
 public sealed record ProcessingPolicy(int MaxInputBytes = 8 * 1024 * 1024, int MaxStringChars = 16 * 1024,
-    int MaxJsonDepth = 32, int MaxChartRecords = 100_000, int MaxFolders = 20_000,
-    long MaxPairExpansions = 250_000, int MaxFindings = 64, int MaxReportRows = 200_000)
+    int MaxJsonDepth = 32, int MaxChartRecords = 250_000, int MaxFolders = 25_000,
+    long MaxPairExpansions = 250_000, int MaxFindings = 64, int MaxReportRows = 250_000,
+    int MaxChunkBytes = 64 * 1024, long MaxStreamBytes = 256 * 1024 * 1024,
+    int MaxDistinctHashes = 250_000, int MaxCandidatePairs = 100_000,
+    long MaxRetainedReportChars = 64 * 1024 * 1024, int MaxFolderHashMemberships = 1_000_000)
 {
     public void Validate()
     {
         if (MaxInputBytes <= 0 || MaxStringChars <= 0 || MaxJsonDepth <= 0 || MaxJsonDepth > 128 ||
-            MaxChartRecords <= 0 || MaxFolders <= 0 || MaxPairExpansions <= 0 || MaxFindings < 2 || MaxReportRows <= 0)
+            MaxChartRecords <= 0 || MaxFolders <= 0 || MaxPairExpansions <= 0 || MaxFindings < 2 || MaxReportRows <= 0 ||
+            MaxChunkBytes <= 0 || MaxChunkBytes > 1024 * 1024 || MaxStreamBytes <= 0 || MaxDistinctHashes <= 0 || MaxCandidatePairs <= 0 ||
+            MaxRetainedReportChars <= 0 || MaxFolderHashMemberships <= 0)
             throw new ArgumentOutOfRangeException(nameof(ProcessingPolicy), "Every offline budget must be positive and finite; findings need a stop marker.");
     }
     internal void Limit(bool exceeded, string name) { if (exceeded) throw new EvidenceException(FindingKind.ResourceLimit, name); }

@@ -65,7 +65,12 @@ public static class Provenance
         }
         Invalid(latest is null, "NO_COMPLETED_SCAN", "No completed scan supplied.");
         Invalid(expectedScan <= 0, "EXPECTED_SCAN", "Expected scan must be positive.");
-        if (latest is not null) Invalid(latest.Id != expectedScan, "EXPECTED_SCAN_CHANGED", "Expected identity differs from latest completed scan.");
+        ScanScopeChange? scopeChange = null;
+        if (latest is not null && expectedScan > 0 && latest.Id != expectedScan)
+        {
+            scopeChange = new(expectedScan, latest.Id, scanIds.Contains(expectedScan));
+            findings.Add(FindingKind.ScopeChanged, "EXPECTED_SCAN_CHANGED", "Frozen expected scan differs from actual latest COMPLETED scan; future native disposition is BLOCKED.");
+        }
         var roots = new Dictionary<long, Root>(); var rootKeys = new HashSet<string>(StringComparer.Ordinal);
         foreach (var root in evidence.Roots)
         {
@@ -163,11 +168,17 @@ public static class Provenance
         }
         if (latest?.Statistics is { } currentStats)
         {
-            var current = evidence.Charts.Where(c => c.Present == 1).ToArray();
-            Invalid(currentStats.Discovered != current.Length || currentStats.Errored != current.LongCount(c => c.Status is "ERROR" or "UNSTABLE") ||
-                currentStats.Unstable != current.LongCount(c => c.Status == "UNSTABLE"), "CURRENT_STATISTICS", "Current row statuses disagree with derivable scan counters.");
+            long present = 0, errored = 0, unstable = 0;
+            foreach (var c in evidence.Charts)
+            {
+                cancellation.ThrowIfCancellationRequested();
+                if (c.Present != 1) continue;
+                present++; if (c.Status is "ERROR" or "UNSTABLE") errored++; if (c.Status == "UNSTABLE") unstable++;
+            }
+            Invalid(currentStats.Discovered != present || currentStats.Errored != errored || currentStats.Unstable != unstable,
+                "CURRENT_STATISTICS", "Current row statuses disagree with derivable scan counters.");
         }
         Pending("DATABASE_AND_NATIVE_ORIGIN_NOT_VERIFIED");
-        return new(latest, findings.Items);
+        return new(latest, findings.Items) { ScopeChange = scopeChange };
     }
 }

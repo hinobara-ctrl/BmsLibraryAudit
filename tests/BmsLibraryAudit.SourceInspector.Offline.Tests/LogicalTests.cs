@@ -161,7 +161,8 @@ public sealed class LogicalTests
         var charts = new[] { Fixtures.Chart("a", 0) with { Status = "ERROR", Size = -1, Md5 = null, Sha256 = null }, Fixtures.Chart("A", 1) };
         var first = Relationships.Analyze(charts, [], Fixtures.Policy);
         var second = Relationships.Analyze(charts.Reverse().ToArray(), [], Fixtures.Policy);
-        Assert.Equal(new[] { @"C:\Synthetic\A" }, first.IncompleteFolders); Assert.Equal(first.IncompleteFolders, second.IncompleteFolders);
+        // Corrected historical oracle: first non-OK spelling survives both orders.
+        Assert.Equal(new[] { @"C:\Synthetic\a" }, first.IncompleteFolders); Assert.Equal(first.IncompleteFolders, second.IncompleteFolders);
     }
     [Theory, Trait("OriginalId", "T12")]
     [InlineData("boolean")][InlineData("duplicate")][InlineData("key")]

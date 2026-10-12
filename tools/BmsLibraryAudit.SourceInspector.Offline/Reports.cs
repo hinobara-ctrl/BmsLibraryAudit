@@ -16,7 +16,10 @@ public sealed record DuplicateRow(string Sha256, string Md5, long GroupPaths, lo
     string Parent, string Filename, string Extension, long Size, string MtimeUtc);
 public sealed record ClusterRow(string Kind, string Id, int FolderCount, string FolderPath);
 public sealed record ParsedReports(Summary Summary, IReadOnlyList<DuplicateRow> Duplicates,
-    IReadOnlyList<Candidate> Candidates, IReadOnlyList<ClusterRow> Clusters, ReadOnlyMemory<byte> SummaryBytes);
+    IReadOnlyList<Candidate> Candidates, IReadOnlyList<ClusterRow> Clusters, ReadOnlyMemory<byte> SummaryBytes)
+{
+    public ReportBindings? Bindings { get; init; }
+}
 public enum SummaryProfile { CanonicalLf, WindowsLegacy, Unsupported, Malformed }
 public sealed record SummaryOracle(string ReportType, string ToolVersion, int SchemaVersion, string Phase,
     string SpecificationId, ReadOnlyMemory<byte> CanonicalBytes, ReadOnlyMemory<byte> LegacyBytes);
@@ -200,43 +203,11 @@ public static class Reports
     public static IReadOnlyList<string[]> ParseCsv(ReadOnlyMemory<byte> bytes, IReadOnlyList<string> header,
         ProcessingPolicy policy, CancellationToken cancellation = default)
     {
-        var text = Decode(bytes, policy);
-        policy.Limit(header.Count > policy.MaxReportRows, "HEADER_LIMIT");
-        foreach (var name in header) policy.Text(name);
-        if (header.Count == 0 || header.Any(string.IsNullOrEmpty) || header.Distinct(StringComparer.Ordinal).Count() != header.Count)
-            throw new EvidenceException(FindingKind.Invalid, "CSV_HEADER");
-        if (text.StartsWith('\ufeff')) throw new EvidenceException(FindingKind.Pending, "BOM_UNSUPPORTED");
-        var rows = new List<string[]>(); var fields = new List<string>(); var field = new StringBuilder();
-        var quoted = false; var ended = false; var start = true;
-        void FinishField() { fields.Add(field.ToString()); field.Clear(); ended = false; start = true; if (fields.Count > header.Count) throw new EvidenceException(FindingKind.Invalid, "CSV_FIELD_COUNT"); }
-        void FinishRow()
-        {
-            FinishField(); if (fields.Count != header.Count) throw new EvidenceException(FindingKind.Invalid, "CSV_FIELD_COUNT");
-            rows.Add(fields.ToArray()); fields.Clear(); policy.Limit(rows.Count - 1 > policy.MaxReportRows, "REPORT_ROW_LIMIT");
-        }
-        for (var i = 0; i < text.Length; i++)
-        {
-            cancellation.ThrowIfCancellationRequested(); var c = text[i];
-            if (quoted)
-            {
-                if (c == '"') { if (i + 1 < text.Length && text[i + 1] == '"') { field.Append('"'); i++; } else { quoted = false; ended = true; } }
-                else field.Append(c);
-            }
-            else if (c == ',') FinishField();
-            else if (c == '\n') FinishRow();
-            else if (c == '\r') throw new EvidenceException(FindingKind.Pending, "CSV_CRLF_UNSUPPORTED");
-            else if (c == '"' && start) { quoted = true; start = false; }
-            else
-            {
-                if (ended || c == '"') throw new EvidenceException(FindingKind.Invalid, "CSV_QUOTING");
-                field.Append(c); start = false;
-            }
-            policy.Limit(field.Length > policy.MaxStringChars, "FIELD_LIMIT");
-        }
-        if (quoted) throw new EvidenceException(FindingKind.Invalid, "CSV_QUOTING");
-        if (!text.EndsWith('\n') || fields.Count != 0 || field.Length != 0 || ended) throw new EvidenceException(FindingKind.Pending, "CSV_FINAL_LF_REQUIRED");
-        if (rows.Count == 0 || !rows[0].SequenceEqual(header, StringComparer.Ordinal)) throw new EvidenceException(FindingKind.Invalid, "CSV_HEADER");
-        return rows.Skip(1).ToArray();
+        policy.Validate(); cancellation.ThrowIfCancellationRequested();
+        policy.Limit(bytes.Length > policy.MaxInputBytes, "INPUT_BYTE_LIMIT");
+        using var input = new MemoryInput(bytes);
+        using var reader = new IncrementalCsv(input, policy, cancellation);
+        return reader.Rows(header).ToArray();
     }
     private static long Integer(string text)
     {
@@ -254,7 +225,19 @@ public static class Reports
     }
     public static IReadOnlyList<DuplicateRow> ParseDuplicates(ReadOnlyMemory<byte> bytes, ProcessingPolicy policy, CancellationToken cancellation = default)
     {
-        var rows = ParseCsv(bytes, ["sha256", "md5", "group_paths", "root_id", "absolute_path", "parent_folder", "filename", "extension", "size", "mtime_utc"], policy, cancellation);
+        return Required(ReportInputs.Duplicates(bytes, policy, cancellation), cancellation);
+    }
+    internal static readonly string[] DuplicateHeader = ["sha256", "md5", "group_paths", "root_id", "absolute_path", "parent_folder", "filename", "extension", "size", "mtime_utc"];
+    internal static readonly string[] CandidateHeader = ["folder_a", "folder_b", "physical_files_a", "physical_files_b", "charts_a", "charts_b", "common", "coverage_a", "coverage_b", "jaccard", "relationship"];
+    internal static readonly string[] ClusterHeader = ["kind", "cluster_id", "folder_count", "folder_path"];
+    private static T Required<T>(ReportEvidence<T> parsed, CancellationToken cancellation) where T : class
+    {
+        cancellation.ThrowIfCancellationRequested();
+        if (parsed.Value is not null) return parsed.Value;
+        throw new EvidenceException(parsed.Finding!.Kind, parsed.Finding.Code);
+    }
+    internal static IReadOnlyList<DuplicateRow> DuplicateRows(IEnumerable<string[]> rows, CancellationToken cancellation)
+    {
         var result = new List<DuplicateRow>(); var paths = new HashSet<string>(StringComparer.Ordinal);
         foreach (var r in rows)
         {
@@ -263,11 +246,14 @@ public static class Reports
                 !Provenance.Utc(r[9], out _) || !paths.Add(r[4])) throw new EvidenceException(FindingKind.Invalid, "DUPLICATE_ROW");
             result.Add(new(r[0], r[1], Integer(r[2]), Integer(r[3]), r[4], r[5], r[6], r[7], Integer(r[8]), r[9]));
         }
-        return result;
+        return result.AsReadOnly();
     }
     public static IReadOnlyList<Candidate> ParseCandidates(ReadOnlyMemory<byte> bytes, ProcessingPolicy policy, CancellationToken cancellation = default)
     {
-        var rows = ParseCsv(bytes, ["folder_a", "folder_b", "physical_files_a", "physical_files_b", "charts_a", "charts_b", "common", "coverage_a", "coverage_b", "jaccard", "relationship"], policy, cancellation);
+        return Required(ReportInputs.Candidates(bytes, policy, cancellation), cancellation);
+    }
+    internal static IReadOnlyList<Candidate> CandidateRows(IEnumerable<string[]> rows, CancellationToken cancellation)
+    {
         var result = new List<Candidate>(); var pairs = new HashSet<(string, string)>();
         foreach (var r in rows)
         {
@@ -281,11 +267,14 @@ public static class Reports
                 r[10] != Relationships.Classify(a, b, common)) throw new EvidenceException(FindingKind.Invalid, "CANDIDATE_MATH");
             result.Add(new(r[0], r[1], physicalA, physicalB, a, b, common, coverageA, coverageB, jaccard, r[10]));
         }
-        return result;
+        return result.AsReadOnly();
     }
     public static IReadOnlyList<ClusterRow> ParseClusters(ReadOnlyMemory<byte> bytes, ProcessingPolicy policy, CancellationToken cancellation = default)
     {
-        var rows = ParseCsv(bytes, ["kind", "cluster_id", "folder_count", "folder_path"], policy, cancellation);
+        return Required(ReportInputs.Clusters(bytes, policy, cancellation), cancellation);
+    }
+    internal static IReadOnlyList<ClusterRow> ClusterRows(IEnumerable<string[]> rows, CancellationToken cancellation)
+    {
         var result = new List<ClusterRow>(); var members = new HashSet<(string, string, string)>();
         foreach (var r in rows)
         {
@@ -296,6 +285,6 @@ public static class Reports
                 throw new EvidenceException(FindingKind.Invalid, "CLUSTER_ROW");
             result.Add(new(r[0], r[1], Small(r[2]), r[3]));
         }
-        return result;
+        return result.AsReadOnly();
     }
 }

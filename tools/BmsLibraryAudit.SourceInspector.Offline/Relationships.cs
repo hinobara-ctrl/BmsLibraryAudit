@@ -2,6 +2,12 @@ namespace BmsLibraryAudit.SourceInspector.Offline;
 
 public static class Relationships
 {
+    private sealed class FolderAccumulator(string display)
+    {
+        public string Display { get; set; } = display;
+        public int Physical { get; set; }
+        public HashSet<string> Hashes { get; } = new(StringComparer.Ordinal);
+    }
     public static IReadOnlyList<string> Labels { get; } = Array.AsReadOnly(new[] { "EXACT_CHART_SET", "A_SUBSET_OF_B", "B_SUBSET_OF_A", "HIGH_OVERLAP", "MEDIUM_OVERLAP", "SHARED_CHARTS" });
     public static string Classify(int a, int b, int shared)
     {
@@ -17,7 +23,10 @@ public static class Relationships
     {
         policy.Validate(); cancellation.ThrowIfCancellationRequested();
         policy.Limit(charts.Count > policy.MaxChartRecords || diagnostics.Count > policy.MaxReportRows, "ROW_LIMIT");
-        var present = new List<Chart>(); var invalidFolders = new HashSet<string>(WindowsNames.Comparer);
+        var hashLocations = new Dictionary<string, List<Chart>>(StringComparer.Ordinal);
+        var folderEvidence = new Dictionary<string, FolderAccumulator>(WindowsNames.Comparer);
+        var invalidFolders = new Dictionary<string, string>(WindowsNames.Comparer);
+        var membershipCount = 0;
         var blocked = new List<string>();
         foreach (var d in diagnostics)
         {
@@ -26,23 +35,38 @@ public static class Relationships
             blocked.Add(d.Code is "DIRECTORY_UNREADABLE" or "REPARSE_SKIPPED" ? WindowsNames.Canonical(d.Path) : WindowsNames.Parent(d.Path));
         }
         var allFolders = new HashSet<string>(WindowsNames.Comparer);
-        var displayNames = new Dictionary<string, string>(WindowsNames.Comparer);
+        var firstPresentNames = new Dictionary<string, string>(WindowsNames.Comparer);
         var chartKeys = new HashSet<string>(StringComparer.Ordinal);
+        var processedCharts = 0;
         foreach (var c in charts)
         {
-            cancellation.ThrowIfCancellationRequested(); policy.Text(c.Path); policy.Text(c.Parent); policy.Text(c.Key);
+            cancellation.ThrowIfCancellationRequested();
+            policy.Limit(++processedCharts > policy.MaxChartRecords, "CHART_LIMIT");
+            policy.Text(c.Path); policy.Text(c.Parent); policy.Text(c.Key);
             if (c.Present is not (0 or 1) || c.Status is not ("OK" or "ERROR" or "UNSTABLE" or "MISSING" or "UNVERIFIED" or "INACTIVE") ||
                 c.Key != WindowsNames.Key(c.Path) || !chartKeys.Add(c.Key) || !WindowsNames.Comparer.Equals(WindowsNames.Canonical(c.Parent), WindowsNames.Parent(c.Path)))
                 throw new EvidenceException(FindingKind.Invalid, "CHART_LOCAL_PROVENANCE");
             if (c.Present != 1) continue;
             var folder = WindowsNames.Canonical(c.Parent);
             allFolders.Add(folder); policy.Limit(allFolders.Count > policy.MaxFolders, "FOLDER_LIMIT");
-            if (!displayNames.TryGetValue(folder, out var display) || StringComparer.Ordinal.Compare(c.Parent, display) < 0) displayNames[folder] = c.Parent;
-            if (c.Status != "OK") invalidFolders.Add(folder);
+            firstPresentNames.TryAdd(folder, c.Parent);
+            // Historical text retains the first non-OK spelling, even if an OK row came first.
+            if (c.Status != "OK") invalidFolders.TryAdd(folder, c.Parent);
             else
             {
                 if (!Provenance.Digest(c.Sha256, 64)) throw new EvidenceException(FindingKind.Invalid, "CHART_HASH");
-                present.Add(c);
+                if (!hashLocations.TryGetValue(c.Sha256!, out var locations))
+                {
+                    policy.Limit(hashLocations.Count >= policy.MaxDistinctHashes, "HASH_LIMIT");
+                    hashLocations.Add(c.Sha256!, locations = []);
+                }
+                locations.Add(c);
+                if (!folderEvidence.TryGetValue(folder, out var accumulator))
+                    folderEvidence.Add(folder, accumulator = new(c.Parent));
+                if (StringComparer.Ordinal.Compare(c.Parent, accumulator.Display) < 0) accumulator.Display = c.Parent;
+                accumulator.Physical = checked(accumulator.Physical + 1);
+                if (accumulator.Hashes.Add(c.Sha256!))
+                    policy.Limit(++membershipCount > policy.MaxFolderHashMemberships, "FOLDER_HASH_LIMIT");
             }
         }
         // Ancestor membership is lexical and bounded by field length, rather than folders x diagnostics.
@@ -54,18 +78,17 @@ public static class Relationships
             while (true)
             {
                 cancellation.ThrowIfCancellationRequested();
-                if (excluded.Contains(p)) { invalidFolders.Add(folder); break; }
+                if (excluded.Contains(p)) { invalidFolders.TryAdd(folder, firstPresentNames[folder]); break; }
                 if (p.Length == 3) break;
                 p = WindowsNames.Parent(p);
             }
         }
-        var duplicates = present.GroupBy(c => c.Sha256!, StringComparer.Ordinal).OrderBy(g => g.Key, StringComparer.Ordinal)
-            .Where(g => g.Select(c => c.Key).Distinct(StringComparer.Ordinal).Count() > 1)
-            .Select(g => new DuplicateGroup(g.Key, g.OrderBy(c => c.Key, StringComparer.Ordinal).ToArray())).ToArray();
-        var folders = present.Where(c => !invalidFolders.Contains(WindowsNames.Canonical(c.Parent)))
-            .GroupBy(c => WindowsNames.Canonical(c.Parent), WindowsNames.Comparer)
-            .Select(g => new Folder(g.Select(c => c.Parent).Min(StringComparer.Ordinal)!, g.Count(),
-                g.Select(c => c.Sha256!).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray()))
+        // Keys were validated as unique: a multi-location hash necessarily has distinct physical paths.
+        var duplicates = hashLocations.Where(g => g.Value.Count > 1).OrderBy(g => g.Key, StringComparer.Ordinal)
+            .Select(g => { cancellation.ThrowIfCancellationRequested(); return new DuplicateGroup(g.Key, g.Value.OrderBy(c => c.Key, StringComparer.Ordinal).ToArray()); }).ToArray();
+        var folders = folderEvidence.Where(p => !invalidFolders.ContainsKey(p.Key))
+            .Select(p => { cancellation.ThrowIfCancellationRequested(); var f = p.Value;
+                return new Folder(f.Display, f.Physical, f.Hashes.Order(StringComparer.Ordinal).ToArray()); })
             .OrderBy(f => f.Path, StringComparer.Ordinal).ToArray();
         var hashOwners = new Dictionary<string, List<int>>(StringComparer.Ordinal);
         for (var i = 0; i < folders.Length; i++)
@@ -78,6 +101,7 @@ public static class Relationships
         long work = 0;
         foreach (var owners in hashOwners.Values)
         {
+            cancellation.ThrowIfCancellationRequested();
             work = checked(work + (long)owners.Count * (owners.Count - 1) / 2);
             policy.Limit(work > policy.MaxPairExpansions, "PAIR_EXPANSION_LIMIT");
         }
@@ -88,7 +112,12 @@ public static class Relationships
                 {
                     cancellation.ThrowIfCancellationRequested();
                     var key = (owners[left], owners[right]);
-                    intersections[key] = checked(intersections.GetValueOrDefault(key) + 1);
+                    if (intersections.TryGetValue(key, out var count)) intersections[key] = checked(count + 1);
+                    else
+                    {
+                        policy.Limit(intersections.Count >= policy.MaxCandidatePairs, "CANDIDATE_PAIR_LIMIT");
+                        intersections.Add(key, 1);
+                    }
                 }
         var candidates = new List<Candidate>();
         var related = Enumerable.Range(0, folders.Length).Select(_ => new List<int>()).ToArray();
@@ -121,6 +150,6 @@ public static class Relationships
                 new Component(kind, kind + "_" + (index + 1).ToString("D6", System.Globalization.CultureInfo.InvariantCulture), g)).ToArray();
         }
         return new(folders, duplicates, candidates, Traverse("RELATED", related).Concat(Traverse("EXACT_ONLY", exact)).ToArray(),
-            invalidFolders.Select(f => displayNames[f]).Order(StringComparer.Ordinal).ToArray());
+            invalidFolders.Values.Order(StringComparer.Ordinal).ToArray());
     }
 }

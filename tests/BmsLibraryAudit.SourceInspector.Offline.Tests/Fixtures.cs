@@ -79,7 +79,13 @@ internal static class Fixtures
     internal static ParsedReports ReportsForSimple(byte[]? bytes = null)
     {
         bytes ??= Canonical;
-        return new(Reports.ParseSummary(bytes, Policy), [], [], [], bytes);
+        return new(Reports.ParseSummary(bytes, Policy), [], [], [], bytes)
+        {
+            Bindings = new(ReportInputs.Summary(bytes, Policy),
+                ReportInputs.Duplicates(Encoding.UTF8.GetBytes("sha256,md5,group_paths,root_id,absolute_path,parent_folder,filename,extension,size,mtime_utc\n"), Policy),
+                ReportInputs.Candidates(Encoding.UTF8.GetBytes("folder_a,folder_b,physical_files_a,physical_files_b,charts_a,charts_b,common,coverage_a,coverage_b,jaccard,relationship\n"), Policy),
+                ReportInputs.Clusters(Encoding.UTF8.GetBytes("kind,cluster_id,folder_count,folder_path\n"), Policy))
+        };
     }
     internal static Chart[] Mathematics => [Chart("A", 0), Chart("A", 1), Chart("A", 2, 'b'),
         Chart("B", 0), Chart("B", 1, 'b'), Chart("C", 0), Chart("C", 1, 'b'), Chart("D", 0), Chart("D", 1, 'c')];

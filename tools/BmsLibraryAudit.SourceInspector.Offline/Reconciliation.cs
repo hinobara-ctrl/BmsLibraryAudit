@@ -9,14 +9,17 @@ public static class Reconciliation
         CancellationToken cancellation = default)
     {
         policy.Validate();
+        Findings? observed = null;
+        ScanScopeChange? scopeChange = null;
         try
         {
             var validation = Provenance.Validate(evidence, expectedScan, policy, cancellation);
-            var findings = new Findings(policy);
+            scopeChange = validation.ScopeChange;
+            var findings = observed = new Findings(policy);
             foreach (var f in validation.Findings) findings.Add(f.Kind, f.Code, f.Detail);
             if (!validation.Valid || validation.Latest?.Statistics is null || validation.Latest.Roots is null ||
                 validation.Findings.Any(f => f.Kind == FindingKind.Pending && f.Code != "DATABASE_AND_NATIVE_ORIGIN_NOT_VERIFIED"))
-                return new(false, false, findings.Items, null, null);
+                return new(false, false, findings.Items, null, null) { ScopeChange = validation.ScopeChange, ReportEvidence = reports.Bindings };
             var scan = validation.Latest;
             var ds = evidence.Diagnostics.Where(d => d.ScanId == scan.Id).ToArray();
             var analysis = Relationships.Analyze(evidence.Charts, ds, policy, cancellation);
@@ -57,6 +60,25 @@ public static class Reconciliation
                     actual.EvidenceNotice == expected.EvidenceNotice, prefix + "_DETAILS");
             }
             SummaryCheck(reports.Summary, "SUMMARY");
+            var bound = reports.Bindings;
+            var bytesBound = bound?.Complete == true;
+            if (!bytesBound)
+            {
+                findings.Add(FindingKind.Pending, "REPORT_BYTE_BINDING_MISSING", "All four complete parser bindings are required for completed reconciliation.");
+                if (bound is not null)
+                    foreach (var f in new[] { bound.Summary.Finding, bound.Duplicates.Finding, bound.Candidates.Finding, bound.Clusters.Finding })
+                        if (f is not null) findings.Add(f.Kind, f.Code, f.Detail);
+            }
+            else
+            {
+                Check(bound!.Summary.Kind == ReportKind.Summary && bound.Duplicates.Kind == ReportKind.Duplicates &&
+                    bound.Candidates.Kind == ReportKind.Candidates && bound.Clusters.Kind == ReportKind.Clusters, "REPORT_BINDING_KIND");
+                Check(bound.Duplicates.Value!.SequenceEqual(reports.Duplicates) && bound.Candidates.Value!.SequenceEqual(reports.Candidates) &&
+                    bound.Clusters.Value!.SequenceEqual(reports.Clusters), "REPORT_ROW_BINDING");
+                policy.Limit(reports.SummaryBytes.Length > policy.MaxInputBytes, "INPUT_BYTE_LIMIT");
+                Check(bound.Summary.BytesConsumed == reports.SummaryBytes.Length &&
+                    bound.Summary.Sha256 == System.Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(reports.SummaryBytes.Span)), "SUMMARY_BYTE_BINDING");
+            }
             FormatRecognition? format = null;
             if (reports.SummaryBytes.IsEmpty) findings.Add(FindingKind.Pending, "SUMMARY_BYTES_MISSING", "Exact original-byte evidence is unavailable.");
             else
@@ -67,15 +89,20 @@ public static class Reconciliation
                 if (!format.ExactOracleMatch) findings.Add(FindingKind.Pending, "SUMMARY_FORMAT_UNPROVEN", format.Reason);
                 findings.Add(FindingKind.Pending, "REPORT_EXTERNAL_PROVENANCE_REQUIRED", "A synthetic byte match cannot establish actual producer/native report identity.");
             }
-            var expectedDuplicates = analysis.Duplicates.SelectMany(g => g.Locations.Select(c => new DuplicateRow(g.Sha256, c.Md5!, g.Locations.Count,
-                c.RootId, c.Path, c.Parent, c.Name, c.Extension, c.Size, new DateTime(c.MtimeTicks, DateTimeKind.Utc).ToString("O", CultureInfo.InvariantCulture)))).ToArray();
+            var expectedDuplicates = analysis.Duplicates.SelectMany(g => g.Locations.Select(c =>
+            {
+                cancellation.ThrowIfCancellationRequested();
+                return new DuplicateRow(g.Sha256, c.Md5!, g.Locations.Count, c.RootId, c.Path, c.Parent, c.Name, c.Extension, c.Size,
+                    new DateTime(c.MtimeTicks, DateTimeKind.Utc).ToString("O", CultureInfo.InvariantCulture));
+            }));
             foreach (var d in reports.Duplicates) { cancellation.ThrowIfCancellationRequested(); foreach (var s in new[] { d.Path, d.Parent, d.Filename, d.Extension, d.Sha256, d.Md5, d.MtimeUtc }) policy.Text(s); }
             foreach (var c in reports.Candidates) { cancellation.ThrowIfCancellationRequested(); foreach (var s in new[] { c.FolderA, c.FolderB, c.Relationship }) policy.Text(s); }
             foreach (var c in reports.Clusters) { cancellation.ThrowIfCancellationRequested(); foreach (var s in new[] { c.Kind, c.Id, c.FolderPath }) policy.Text(s); }
             // Complete ordered tuples preserve duplicate multiplicity; neither totals nor sets can hide missing rows.
             Check(reports.Duplicates.SequenceEqual(expectedDuplicates), "DUPLICATE_ROWS");
             Check(reports.Candidates.SequenceEqual(analysis.Candidates), "CANDIDATE_ROWS");
-            var expectedClusters = analysis.Components.SelectMany(c => c.Members.Select(m => new ClusterRow(c.Kind, c.Id, c.Members.Count, m))).ToArray();
+            var expectedClusters = analysis.Components.SelectMany(c => c.Members.Select(m =>
+            { cancellation.ThrowIfCancellationRequested(); return new ClusterRow(c.Kind, c.Id, c.Members.Count, m); }));
             Check(reports.Clusters.SequenceEqual(expectedClusters), "CLUSTER_ROWS");
             if (selectedExact is not null)
             {
@@ -90,13 +117,16 @@ public static class Reconciliation
                 }
             }
             var mismatch = findings.Items.Any(f => f.Kind is FindingKind.Invalid or FindingKind.Mismatch);
-            var formatComplete = format?.ExactOracleMatch == true;
-            return new(formatComplete, !mismatch, findings.Items, analysis, format);
+            var formatComplete = format?.ExactOracleMatch == true && bytesBound && !mismatch;
+            return new(formatComplete, !mismatch && (bound is null || bound.Complete), findings.Items, analysis, format) { ReportEvidence = bound };
         }
-        catch (EvidenceException ex) { return new(false, false, [.. ex.PriorFindings, new(ex.Kind, ex.Code, "Offline evidence processing stopped; no native/SQLite proof exists.")], null, null); }
-        catch (OverflowException) { return new(false, false, [new(FindingKind.Invalid, "INTEGER_OVERFLOW", "Supplied facts overflow the supported integer domain.")], null, null); }
+        catch (EvidenceException ex) { return Stop(ex.Kind, ex.Code, ex.PriorFindings.Count > 0 ? ex.PriorFindings : observed?.Items ?? []); }
+        catch (OverflowException) { return Stop(FindingKind.Invalid, "INTEGER_OVERFLOW", observed?.Items ?? []); }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
-        { return new(false, false, [new(FindingKind.Pending, "CANCELLED", "Requested logical checks remain incomplete.")], null, null); }
+        { return Stop(FindingKind.Pending, "CANCELLED", observed?.Items ?? []); }
+        OfflineResult Stop(FindingKind kind, string code, IReadOnlyList<Finding> prior) =>
+            new(false, false, [.. prior, new(kind, code, "Offline processing stopped; required checks and native proof remain incomplete.")], null, null)
+            { ScopeChange = scopeChange, ReportEvidence = reports.Bindings };
     }
     private static bool MapEqual<TKey>(IReadOnlyDictionary<TKey, long> a, IReadOnlyDictionary<TKey, long> b) where TKey : notnull =>
         a.Count == b.Count && a.All(p => b.TryGetValue(p.Key, out var n) && n == p.Value);
