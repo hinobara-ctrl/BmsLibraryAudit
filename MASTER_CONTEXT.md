@@ -1282,6 +1282,12 @@ Required cases:
 
 # 39. Recommended phase progression
 
+> **Historical planning snapshot (2026-10-05).** The updated and current
+> [ROADMAP.md](ROADMAP.md) retains Phase 1–9, including verified folder fusion
+> and removal of demonstrated redundant files as the mandatory final objective.
+> It adjusts research priorities using the modern Neeted fork without changing
+> past evidence, contracts or authorization gates.
+
 ```text
 Phase 1
 Chart index + relationship discovery

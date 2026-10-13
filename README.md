@@ -2,6 +2,12 @@
 
 Independent, conservative BMS library auditor.
 
+**Long-term objective:** verified fusion of related BMS/BMSON folders and removal
+of provably redundant file instances, while preserving all unique content and
+required chart-resource relationships. This is not a general library manager.
+See the [current nine-phase roadmap](ROADMAP.md) for the final mutation gates
+and priority research gaps; historical design remains in MASTER_CONTEXT.md.
+
 Implemented scope: validated `PHASE_1.CHART_INDEX_AND_RELATIONSHIP_DISCOVERY`
 and `PHASE_2A.READ_ONLY_PREFLIGHT` with synthetic validation on Windows.
 Heuristics discover. Exact evidence proves. Verified plans mutate.

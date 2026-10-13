@@ -9,8 +9,11 @@ Public ecosystem references, retained for future research only:
   implementation must not be copied).
 - beatoraja: https://github.com/exch-bms2/beatoraja (optional future read-only
   import; external databases are never filesystem truth).
-- BeMusicSeeker: https://github.com/Neeted/bemusicseeker-unofficial-fork
-  (relationship components are discovery structures, not merge authority).
+- Modern Neeted BeMusicSeeker fork: https://github.com/Neeted/bemusicseeker-unofficial-fork
+  (modern `dev` source reviewed at `541db4fde12d1091ce0b7c939e11dd07d435b81c`;
+  MD5 duplicate groups, reverse resource indexes, install estimation, parser
+  compatibility and mutation sessions inform *research*, not permission to
+  copy code or proof of resource equality/safe deletion; see `ROADMAP.md`).
 - BMSON specification: https://github.com/bemusic/bmson-spec (future phases).
 
 Platform references:
