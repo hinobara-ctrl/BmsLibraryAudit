@@ -81,3 +81,9 @@ The launcher returns the supervisor PID and an owned run directory under
 failure, timeout or cancellation; no open shell or Codex monitoring is required.
 See [corrective hardening and performance](docs/PHASE_2A_CORRECTIVE_HARDENING_AND_PERFORMANCE_REPORT.md)
 for limits, schema incompatibility, build provenance and validation evidence.
+
+The independent offline source inspector is a separate research component that
+validates supplied synthetic evidence without opening source libraries or SQLite.
+Its [consolidated closure](docs/PHASE_2A_SOURCE_INSPECTOR_OFFLINE_CLOSURE.md) is
+ready for final independent review. Native verification remains incomplete;
+offline acceptance grants no real-source or Phase 2A execution authorization.

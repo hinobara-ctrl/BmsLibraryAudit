@@ -20,18 +20,18 @@ internal sealed class StressExecution(Action<string> emit, string id, string uni
         admitted ? "ADMITTED" : "REJECTED_RESOURCE_GATE", false, expected,
         admitted ? "BLOCKED_ENVIRONMENT" : "NOT_EXECUTED_RESOURCE_GATE", null, "REQUIRES_TRX_CORRELATION", null, null,
         admitted ? "Admitted scenario did not start; consult runner evidence." : "Conservative admission rejected the workload; no fixture allocated.");
-    public bool Admitted => admitted;
+    public bool Admitted => record.Admission == "ADMITTED";
     public StressExecutionRecord Record => record;
     internal static bool Fits(long estimate, long budget, long availableMemory) => estimate <= budget && estimate < availableMemory / 3;
     public void Start()
     {
-        if (!admitted || elapsed is not null || disposed) throw new InvalidOperationException("Workload must be admitted and started exactly once.");
+        if (!Admitted || elapsed is not null || disposed) throw new InvalidOperationException("Workload must be admitted and started exactly once.");
         elapsed = Stopwatch.StartNew();
         record = record with { WorkloadExecuted = true, ActualOutcome = "EXECUTED_FAIL", Reason = "Workload did not reach validated completion; consult TRX failure evidence." };
     }
     public void Complete(string outcome, string actual, string measurements)
     {
-        if (elapsed is null || disposed || outcome is not ("EXECUTED_PASS" or "CANCELLED_EXPECTED" or "RESOURCE_STOP_EXPECTED"))
+        if (elapsed is null || disposed || record.ActualOutcome != "EXECUTED_FAIL" || outcome is not ("EXECUTED_PASS" or "CANCELLED_EXPECTED" or "RESOURCE_STOP_EXPECTED"))
             throw new InvalidOperationException("Only an executed and validated workload can complete.");
         var values = measurements.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
             .Select(p => p.Split('=', 2)).ToDictionary(p => p[0], p => long.Parse(p[1], CultureInfo.InvariantCulture), StringComparer.Ordinal);
