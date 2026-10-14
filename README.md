@@ -134,7 +134,7 @@ library recursion or resource file access:
 
 ```powershell
 # An explicitly created synthetic chart; reports are outside its source folder.
-dotnet src/BmsLibraryAudit.Cli/bin/Release/net10.0/bms-audit.dll phase3 inspect --chart .artifacts/synthetic-phase3/charts/chart.bms --output .artifacts/synthetic-phase3/report
+dotnet src/BmsLibraryAudit.Cli/bin/Release/net10.0/bms-audit.dll phase3 inspect --chart .artifacts/synthetic-phase3/charts/chart.bms --source-root .artifacts/synthetic-phase3/charts --output .artifacts/synthetic-phase3/report
 ./scripts/Phase3-Smoke-Test.ps1
 ```
 
@@ -145,6 +145,24 @@ and diagnostics. Source locations are BMS line/column or BMSON JSON pointers;
 duplicate JSON members remain separately observed and are diagnosed. No first-
 or last-wins rule is applied. `OBSERVED` describes syntax; `POTENTIAL`,
 `AMBIGUOUS`, `UNKNOWN` and `UNSUPPORTED` express the remaining uncertainty.
+
+`--source-root` is mandatory in both the CLI and inspector API: declare the whole
+source library boundary to protect. The chart must be inside that existing,
+ordinary root; output cannot equal, descend from, or be an ancestor of it.
+Protection therefore includes sibling song folders under that root. Native
+identities/resolved paths and reparse checks are revalidated during staging and
+before publication. The declared root and its native facts appear in the report.
+No immediate-folder fallback or automatic detection of other libraries exists;
+undeclared roots cannot be claimed protected by this inspector.
+
+Reports are serialized deterministically, written to one exclusive operation-owned
+temporary in the authorized destination, fully flushed, and renamed within that
+directory to `chart_inspection.json` without overwriting existing files. Failure
+or cancellation before publication does not create a final report name. Cleanup
+only removes a provably owned temporary in the same validated directory; it never
+deletes directories, pre-existing reports or replacement files. A process crash
+or lost native binding may leave a `.tmp` for inspection. This protocol does not
+claim universal rename atomicity or power-loss durability on every filesystem.
 
 BMS/BME/BML/PMS support includes WAV/BMP declarations, stage/banner/backdrop/
 preview paths, distinct BPM/STOP namespaces, recognized BGM/note/BGA channels,
@@ -157,11 +175,19 @@ including Unicode, spaces, separators and quotes, are never physically resolved
 or renamed.
 
 BMSON support is explicitly limited to dependency syntax of version `1.0.0`:
-sound-channel names and notes, BGA headers/events/layers/poor events, and the four
+sound-channel names and notes, BGA headers/events/layers/poor events, and the
 documented image/preview fields in `info`. Lane, pulse, length and continuation
 facts remain recorded; audio slicing and playback simulation are not implemented.
 Legacy/unknown versions, duplicate/conflicting properties, unexpected types and
 unknown properties produce conservative diagnostics with retained raw evidence.
+`info.title_image` is preserved as a potential VISUAL declaration with its authored
+string and JSON pointer. The specification's descriptive section includes it,
+while the introductory IDL omits it; `TITLE_IMAGE_SPEC_DISCREPANCY` explicitly
+marks this uncertainty and incomplete coverage. Null has no invented path and
+is explicitly diagnosed; empty strings remain declarations with a diagnostic;
+invalid types retain raw diagnostics; duplicates retain every alternative.
+No universal simulator interpretation or physical binding is inferred. See the
+[specific primary text](https://github.com/bemusic/bmson-spec/blob/master/doc/index.rst).
 The format references are the [BMSON specification](https://github.com/bemusic/bmson-spec),
 [original BM98 specification](https://bm98.yaneu.com/bm98/bmsformat.html) and
 [BMS command memo](https://hitkey.bms.ms/cmds). Implementation is independent.
@@ -176,7 +202,7 @@ expansion. These are bounded inspections, not large-library performance claims.
 
 Exit 0 means supported dependency syntax was extracted; exit 2 means incomplete
 or ambiguous coverage, 1 is an operational refusal/failure, and 130 cancellation.
-Output must be new/empty and outside the chart's source directory, using Windows
+Output must be new/empty and outside the explicitly declared source root, using Windows
 native identity/alias checks. Syntactic coverage is not full chart validation or
 dependency closure: `dependency_closure_proven` is always false. No required/
 unused labels, physical bindings, Phase 2B provenance joins, Phase 4, rewrites,

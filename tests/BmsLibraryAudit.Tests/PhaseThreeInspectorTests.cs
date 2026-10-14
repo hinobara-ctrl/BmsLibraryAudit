@@ -16,7 +16,7 @@ public sealed class PhaseThreeInspectorTests
     {
         using var f = new Fixture(); var chart = f.File("A", "fixture." + extension, text); var bytes = File.ReadAllBytes(chart); var facts = PhaseTwoSafety.Inspect(chart); var parent = PhaseTwoSafety.Inspect(Path.GetDirectoryName(chart)!);
         var first = Path.Combine(f.Base, "inspection"); var repeat = Path.Combine(f.Base, "repeat-inspection");
-        var a = PhaseThreeInspector.Inspect(chart, first); var b = PhaseThreeInspector.Inspect(chart, repeat);
+        var a = PhaseThreeInspector.Inspect(chart, f.Root, first); var b = PhaseThreeInspector.Inspect(chart, f.Root, repeat);
         Assert.Equal(0, a.Analysis.ExitCode); Assert.False(a.Analysis.DependencyClosureProven);
         Assert.Equal(File.ReadAllBytes(Path.Combine(first, "chart_inspection.json")), File.ReadAllBytes(Path.Combine(repeat, "chart_inspection.json")));
         using var json = JsonDocument.Parse(File.ReadAllText(Path.Combine(first, "chart_inspection.json"))); Assert.Equal(bytes, json.RootElement.GetProperty("analysis").GetProperty("original_bytes").GetBytesFromBase64());
@@ -31,7 +31,7 @@ public sealed class PhaseThreeInspectorTests
         foreach (var output in new[] { f.Path("A", "reports"), f.Root, chart, Path.Combine(f.Base, "occupied") })
         {
             if (output.EndsWith("occupied", StringComparison.Ordinal)) { Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output, "keep"), "existing"); }
-            Assert.Throws<InvalidOperationException>(() => PhaseThreeInspector.Inspect(chart, output));
+            Assert.Throws<InvalidOperationException>(() => PhaseThreeInspector.Inspect(chart, f.Root, output));
         }
         Assert.False(Directory.Exists(f.Path("A", "reports"))); Assert.Equal(bytes, File.ReadAllBytes(chart)); Assert.Equal(facts, PhaseTwoSafety.Inspect(chart));
     }
@@ -43,8 +43,8 @@ public sealed class PhaseThreeInspectorTests
         var log = process.StandardOutput.ReadToEnd() + process.StandardError.ReadToEnd(); process.WaitForExit(); Assert.True(process.ExitCode == 0, log);
         try
         {
-            Assert.Throws<ReparsePointException>(() => PhaseThreeInspector.Inspect(chart, Path.Combine(alias, "out")));
-            Assert.Throws<ReparsePointException>(() => PhaseThreeInspector.Inspect(Path.Combine(alias, "fixture.bms"), Path.Combine(f.Base, "out")));
+            Assert.Throws<ReparsePointException>(() => PhaseThreeInspector.Inspect(chart, f.Root, Path.Combine(alias, "out")));
+            Assert.Throws<ReparsePointException>(() => PhaseThreeInspector.Inspect(Path.Combine(alias, "fixture.bms"), f.Root, Path.Combine(f.Base, "out")));
             Assert.False(Directory.Exists(f.Path("A", "out"))); Assert.False(Directory.Exists(Path.Combine(f.Base, "out")));
         }
         finally { Directory.Delete(alias); }
@@ -53,10 +53,10 @@ public sealed class PhaseThreeInspectorTests
     public void SizeLimitReportsUnobservedIdentityAndCancellationDoesNotWriteOutput()
     {
         using var f = new Fixture(); var chart = f.File("A", "fixture.bms", "#WAV01 a.wav"); var before = File.ReadAllBytes(chart); var facts = PhaseTwoSafety.Inspect(chart);
-        var limited = PhaseThreeInspector.Inspect(chart, Path.Combine(f.Base, "limited"), new(MaximumBytes: 4));
+        var limited = PhaseThreeInspector.Inspect(chart, f.Root, Path.Combine(f.Base, "limited"), new(MaximumBytes: 4));
         Assert.Equal(2, limited.Analysis.ExitCode); Assert.Null(limited.Analysis.Sha256); Assert.Null(limited.Analysis.OriginalBytes); Assert.Equal(before.Length, limited.Analysis.ByteLength);
         using var cancel = new CancellationTokenSource(); cancel.Cancel();
-        Assert.Throws<OperationCanceledException>(() => PhaseThreeInspector.Inspect(chart, Path.Combine(f.Base, "cancelled"), token: cancel.Token));
+        Assert.Throws<OperationCanceledException>(() => PhaseThreeInspector.Inspect(chart, f.Root, Path.Combine(f.Base, "cancelled"), token: cancel.Token));
         Assert.False(Directory.Exists(Path.Combine(f.Base, "cancelled"))); Assert.Equal(before, File.ReadAllBytes(chart)); Assert.Equal(facts, PhaseTwoSafety.Inspect(chart));
     }
 }

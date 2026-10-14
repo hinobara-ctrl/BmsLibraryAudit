@@ -6,8 +6,10 @@ $taskRepository = Split-Path -Parent $PSScriptRoot
 $taskCli = Join-Path $taskRepository 'src\BmsLibraryAudit.Cli\bin\Release\net10.0\bms-audit.dll'
 if (-not (Test-Path -LiteralPath $taskCli)) { throw 'Build Release before running this smoke.' }
 $taskBase = Join-Path $taskRepository ('.artifacts\phase3-smoke-' + [Guid]::NewGuid().ToString('N'))
-$taskSources = Join-Path $taskBase 'charts'
+$taskRoot = Join-Path $taskBase 'library'
+$taskSources = Join-Path $taskRoot 'SongA'
 New-Item -ItemType Directory -Path $taskSources | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $taskRoot 'SongB') | Out-Null
 $taskBms = Join-Path $taskSources 'simple.bms'
 $taskConditional = Join-Path $taskSources 'conditional.bms'
 $taskBmson = Join-Path $taskSources 'sound.bmson'
@@ -23,7 +25,7 @@ $taskBefore = @(Get-ChildItem -LiteralPath $taskSources -File | ForEach-Object {
 })
 foreach ($taskCase in @(@($taskBms,'bms',0,2,3), @($taskConditional,'conditional',2,2,1), @($taskBmson,'bmson',0,2,3))) {
     $taskChart = $taskCase[0]; $taskLabel = $taskCase[1]; $taskOutput = Join-Path $taskBase $taskLabel
-    $taskJson = & $DotNet $taskCli phase3 inspect --chart $taskChart --output $taskOutput
+    $taskJson = & $DotNet $taskCli phase3 inspect --chart $taskChart --source-root $taskRoot --output $taskOutput
     if ($LASTEXITCODE -ne $taskCase[2]) { throw "Unexpected inspection status: $taskLabel" }
     $taskResult = ($taskJson -join "`n") | ConvertFrom-Json
     if ($taskResult.Declarations -ne $taskCase[3] -or $taskResult.Usages -ne $taskCase[4] -or $taskResult.DependencyClosureProven -ne $false) { throw "Incorrect extraction: $taskLabel" }
@@ -36,13 +38,19 @@ foreach ($taskCase in @(@($taskBms,'bms',0,2,3), @($taskConditional,'conditional
     if ($taskLabel -eq 'conditional' -and (@($taskAnalysis.declarations.written_path) -join ',') -ne 'a.wav,b.wav') { throw 'A potential branch was discarded.' }
     if ($taskLabel -eq 'bmson' -and ($taskAnalysis.usages[0].kind -ne 'BGM_EVENT' -or $taskAnalysis.usages[1].continuation -ne $true)) { throw 'BMSON sound semantics were lost.' }
     $taskRepeat = Join-Path $taskBase ($taskLabel + '-repeat')
-    & $DotNet $taskCli phase3 inspect --chart $taskChart --output $taskRepeat | Out-Null
+    & $DotNet $taskCli phase3 inspect --chart $taskChart --source-root $taskRoot --output $taskRepeat | Out-Null
     if ($LASTEXITCODE -ne $taskCase[2] -or (Get-FileHash -LiteralPath $taskReport).Hash -ne (Get-FileHash -LiteralPath (Join-Path $taskRepeat 'chart_inspection.json')).Hash) { throw 'Non-deterministic inspection report.' }
     Write-Output ($taskResult | ConvertTo-Json)
 }
 $taskUnsafe = Join-Path $taskSources 'unsafe-output'
-$taskRefusal = & $DotNet $taskCli phase3 inspect --chart $taskBms --output $taskUnsafe 2>&1
+$taskRefusal = & $DotNet $taskCli phase3 inspect --chart $taskBms --source-root $taskRoot --output $taskUnsafe 2>&1
 if ($LASTEXITCODE -ne 1 -or (Test-Path -LiteralPath $taskUnsafe)) { throw 'Unsafe destination was not refused before writes.' }
+$taskSibling = Join-Path $taskRoot 'SongB\reports'
+$taskRefusal = & $DotNet $taskCli phase3 inspect --chart $taskBms --source-root $taskRoot --output $taskSibling 2>&1
+if ($LASTEXITCODE -ne 1 -or (Test-Path -LiteralPath $taskSibling)) { throw 'Sibling destination under protected root was accepted or created.' }
+$taskMissingRoot = Join-Path $taskBase 'missing-root-output'
+$taskRefusal = & $DotNet $taskCli phase3 inspect --chart $taskBms --output $taskMissingRoot 2>&1
+if ($LASTEXITCODE -ne 1 -or ($taskRefusal -join ' ') -notmatch '--source-root is required' -or (Test-Path -LiteralPath $taskMissingRoot)) { throw 'Omitted source root was not refused.' }
 foreach ($taskFile in $taskBefore) {
     $taskCurrent = Get-Item -LiteralPath $taskFile.Path
     if ($taskCurrent.Length -ne $taskFile.Size -or $taskCurrent.LastWriteTimeUtc.Ticks -ne $taskFile.Mtime -or $taskCurrent.Attributes -ne $taskFile.Attributes -or (Get-FileHash -LiteralPath $taskFile.Path -Algorithm SHA256).Hash -ne $taskFile.Hash) { throw "Synthetic chart modified: $($taskFile.Path)" }

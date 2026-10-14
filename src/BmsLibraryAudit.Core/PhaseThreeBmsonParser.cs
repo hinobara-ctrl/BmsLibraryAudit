@@ -19,14 +19,20 @@ internal static class PhaseThreeBmsonParser
             foreach (var info in Values(root, "info", ""))
             {
                 if (!Object(info, "/info")) continue;
-                Check(info, "/info", "title subtitle artist subartists genre mode_hint chart_name level init_bpm judge_rank total back_image eyecatch_image banner_image preview_music resolution");
-                foreach (var key in new[] { "back_image", "eyecatch_image", "banner_image", "preview_music" })
+                Check(info, "/info", "title subtitle artist subartists genre mode_hint chart_name level init_bpm judge_rank total back_image eyecatch_image title_image banner_image preview_music resolution");
+                foreach (var key in new[] { "back_image", "eyecatch_image", "title_image", "banner_image", "preview_music" })
                     foreach (var value in Values(info, key, "/info"))
                     {
-                        if (value.ValueKind == JsonValueKind.Null) continue;
-                        if (value.ValueKind != JsonValueKind.String) { Error("RESOURCE_PATH_TYPE", "/info/" + key, value); continue; }
+                        var titleImage = key == "title_image";
                         var source = At("/info/" + key, value);
-                        b.Declare("BMSON_INFO", key, key == "preview_music" ? "AUDIO" : "VISUAL", value.GetString(), value.GetRawText(), source, state: supported ? "OBSERVED" : "UNSUPPORTED");
+                        if (titleImage) b.Diagnostic("TITLE_IMAGE_SPEC_DISCREPANCY", "AMBIGUOUS", "BMSON 1.0.0 prose documents title_image but its introductory IDL omits it. Preserve potential visual dependency; universal simulator behavior is not certified.", source);
+                        if (value.ValueKind == JsonValueKind.Null)
+                        {
+                            if (titleImage) b.Diagnostic("TITLE_IMAGE_NULL", "OBSERVED", "Explicit null has no authored resource path; original JSON is retained.", source);
+                            continue;
+                        }
+                        if (value.ValueKind != JsonValueKind.String) { Error("RESOURCE_PATH_TYPE", "/info/" + key, value); continue; }
+                        b.Declare("BMSON_INFO", key, key == "preview_music" ? "AUDIO" : "VISUAL", value.GetString(), value.GetRawText(), source, state: supported ? titleImage ? "POTENTIAL" : "OBSERVED" : "UNSUPPORTED");
                         b.Use("BMSON_INFO", key, "HEADER_RESOURCE", source);
                     }
                 foreach (var p in info.EnumerateObject().Where(p => "title subtitle artist genre mode_hint chart_name".Split(' ').Contains(p.Name, StringComparer.Ordinal)))

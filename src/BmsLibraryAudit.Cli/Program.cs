@@ -13,7 +13,7 @@ static int Run(string[] args)
         bms-audit phase2 preflight --source-db <audit.db> --source-scan <id> --db <phase2.db> --output <new-or-empty-directory> [--component <EXACT_ONLY-id> ...]
         bms-audit phase2 hash --db <phase2.db> --preflight <id> --accept-manifest <sha256> --output <new-or-empty-directory>
         bms-audit phase2 report --db <phase2.db> --session <id> --output <new-or-empty-directory>
-        bms-audit phase3 inspect --chart <synthetic-chart> --output <new-or-empty-directory>
+        bms-audit phase3 inspect --chart <synthetic-chart> --source-root <protected-root> --output <new-or-empty-directory>
         CONTENT is explicit and requires an accepted completed PREFLIGHT. Real-library execution requires separate authorization.
         Outputs must be outside source libraries. Sources are only read.
         """;
@@ -71,11 +71,11 @@ static int RunPhaseThree(string[] args, CancellationToken token)
     for (var i = 2; i < args.Length; i++)
     {
         var key = args[i];
-        if (key is not ("--chart" or "--output") || ++i >= args.Length || args[i].StartsWith("--", StringComparison.Ordinal) || !options.TryAdd(key, args[i]))
+        if (key is not ("--chart" or "--source-root" or "--output") || ++i >= args.Length || args[i].StartsWith("--", StringComparison.Ordinal) || !options.TryAdd(key, args[i]))
             throw new ArgumentException("Unknown, duplicate or missing Phase 3 option: " + key);
     }
     string Required(string key) => options.TryGetValue(key, out var value) ? value : throw new ArgumentException(key + " is required.");
-    var inspection = PhaseThreeInspector.Inspect(Required("--chart"), Required("--output"), token: token);
+    var inspection = PhaseThreeInspector.Inspect(Required("--chart"), Required("--source-root"), Required("--output"), token: token);
     Console.WriteLine(JsonSerializer.Serialize(new { inspection.Analysis.Format, inspection.Analysis.Sha256, inspection.Analysis.SyntaxCoverage,
         Declarations = inspection.Analysis.Declarations.Length, Usages = inspection.Analysis.Usages.Length, Diagnostics = inspection.Analysis.Diagnostics.Length,
         inspection.Analysis.DependencyClosureProven, Report = Path.Combine(PathPolicy.Absolute(Required("--output")), "chart_inspection.json") }, new JsonSerializerOptions { WriteIndented = true }));

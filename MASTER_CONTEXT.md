@@ -1448,3 +1448,15 @@ Phase 2B provenance join, required/unused classification or mutation is added.
 Existing Phase 2 opening reuses the guarded rollback-header validator before
 provider access. README documents commands, bounded limits and synthetic tests.
 Real execution and Phase 4 remain subject to new explicit authorization.
+
+# 44. Phase 3 corrective boundaries — 2026-10-14
+
+Inspection now requires an explicit whole source root; the chart must belong to
+it, and report output must be outside it and its ancestors. Native root/destination
+bindings are revalidated; unknown library roots are never inferred. BMSON
+`title_image` remains a potential visual declaration with explicit IDL/prose
+uncertainty. A complete, flushed exclusive temporary precedes no-overwrite report
+renaming; failure cleanup is restricted to provably owned temporaries and never
+deletes user files/directories. Lost bindings or crashes may leave a temporary.
+These durable safeguards do not implement physical resolution or Phase 4, and
+synthetic validation is not real-library operational acceptance.

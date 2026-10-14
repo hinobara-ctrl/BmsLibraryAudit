@@ -1,7 +1,7 @@
 # BmsLibraryAudit — Current Roadmap
 
-**Planning revision:** 2026-10-14 (Phase 3 synthetic implementation and Phase 2 opening correction).
-**Status:** Original roadmap committed in `63f5be6fdfbe05caeef37b8c2783f11473b0599e`; the implementation-first strategy was published in `f3d6bfb028be026bb088f620ad76d76b3256c9c2`, and Phase 2B in `08d2e1c9eeb1344330698e3de5d9cb5873cf0bc7`. The present Phase 3/corrective changes await independent review and authorized publication.
+**Planning revision:** 2026-10-14 (Phase 3 corrective hardening).
+**Status:** Original roadmap committed in `63f5be6fdfbe05caeef37b8c2783f11473b0599e`; the implementation-first strategy was published in `f3d6bfb028be026bb088f620ad76d76b3256c9c2`, Phase 2B in `08d2e1c9eeb1344330698e3de5d9cb5873cf0bc7`, and Phase 3/Phase 2 opening correction in `f5c02dedf5920f169d000fc1f9ba962de22cc6bd`. The present bounded Phase 3 hardening awaits independent review and authorized publication.
 **Historical planning baseline (2026-10-12):** `hinobara-ctrl/BmsLibraryAudit@7bd460503a51a63e19cf85003893f75dadd6bb54` (`main`).
 **External comparison snapshot:** `Neeted/bemusicseeker-unofficial-fork@541db4fde12d1091ce0b7c939e11dd07d435b81c` (`dev`).
 
@@ -45,7 +45,7 @@ Implementation, verification and real-data access are separate permissions. Unre
 | Phase 2A: complete `EXACT_ONLY` component preflight, direct-chart revalidation, metadata-only inventory, independent preflight DB/seal/reports | Implemented with synthetic Windows validation; real-library pilot **not run/authorized** | Continue through existing review and independent pilot gates. No non-chart byte identity established. |
 | Independent offline source inspector | Offline closure `READY_FOR_INDEPENDENT_REVIEW`; native observer and source-file inspection obligations open | Do not claim production/native coverage or use offline success as permission to access real source data. |
 | Phase 2B: accepted-manifest-bound payload hashing/comparison | Implemented with synthetic Windows validation; **no real-library execution authorized** | Explicit CONTENT command, fresh SHA-256 per required path, exact tree/multiset comparisons, immutable evidence and deterministic reports. New `PREFLIGHT_AND_CONTENT` / `phase2ab-content-1` profile; old profiles rejected unchanged without migration. Independent review remains required. |
-| Phase 3 BMS/BMSON syntactic resource extractor | Implemented with synthetic validation; explicit per-chart inspector | Preserve byte/decoding evidence, declarations, potential usages, all visible branches and uncertainty. No physical bindings or dependency closure. |
+| Phase 3 BMS/BMSON syntactic resource extractor | Implemented with synthetic validation; explicit per-chart inspector | Mandatory declared source root, checked report publication and conservative title_image preservation. Retain byte/decoding evidence, declarations, potential usages, branches and uncertainty. No physical bindings or dependency closure. |
 | Conditional reachability, physical resource resolution, package classifier | Not implemented | Phase 4/5 require separate bounded authorization. |
 | Immutable merge plans, staging, publishing and cleanup | Not implemented; no source mutation authorized | Keep as long-term mandatory objectives, explicitly distinct from any current permission. |
 
@@ -93,6 +93,12 @@ The explicit inspector parses definitions, logical IDs, potential usages and aut
 The implemented model is `Chart -> LogicalResource -> Declaration -> PotentialUsage`, with source positions, conditional syntax contexts and explicit uncertainty. WAV/BMP/timing namespaces remain distinct. Physical asset/file provenance joins, extension alternatives, reachability, required/unused labels and package classification are deferred to later phases.
 
 **Current gate:** synthetic parser/inspection tests pass. Independent review and any future real-sample execution remain separate gates; no real data was accessed. Supported syntax is never dependency closure or deletion authority.
+
+Corrective hardening protects the explicitly declared whole source root, including
+sibling song folders; other roots are not autodetected. Reports are staged and
+flushed before no-overwrite publication in their validated destination. BMSON
+`title_image` is preserved with explicit IDL/prose uncertainty. These corrections
+have synthetic regressions and confer no real-operation or Phase 4 authority.
 
 ### Phase 4 — Conditional reachability and exact resource resolution `[RESEARCH]`
 
