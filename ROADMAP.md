@@ -1,8 +1,8 @@
 # BmsLibraryAudit — Current Roadmap
 
-**Planning revision:** 2026-10-12
-**Status:** Proposed documentation revision; requires repository review and an authorized commit.
-**Project baseline inspected:** `hinobara-ctrl/BmsLibraryAudit@7bd460503a51a63e19cf85003893f75dadd6bb54` (`main`).
+**Planning revision:** 2026-10-14 (implementation-first strategy update).
+**Status:** Original roadmap committed in `63f5be6fdfbe05caeef37b8c2783f11473b0599e`; this strategy update awaits independent review and authorized publication.
+**Historical planning baseline (2026-10-12):** `hinobara-ctrl/BmsLibraryAudit@7bd460503a51a63e19cf85003893f75dadd6bb54` (`main`).
 **External comparison snapshot:** `Neeted/bemusicseeker-unofficial-fork@541db4fde12d1091ce0b7c939e11dd07d435b81c` (`dev`).
 
 This roadmap updates *planning priorities*, **not** the implementation status, historical findings, sealed evidence, approved scope, or authorization gates. Existing phase contracts remain authoritative for their scopes. [`MASTER_CONTEXT.md`](MASTER_CONTEXT.md) remains the historical architecture and requirement record; [`AGENTS.md`](AGENTS.md) remains repository policy.
@@ -14,6 +14,8 @@ Build an **independent, conservative and auditable BMS/BMSON library analyzer an
 The intended final product is **not** a general-purpose library manager or a BeMusicSeeker replacement. It needs no score management, IR, playlists, difficulty tables, media player, package marketplace, or general simulator synchronization UI. Its eventual mutating capabilities are nevertheless **in scope and required for the long-term goal**, subject to separate implementation and authorization gates. A useful read-only auditor and plan generator are intermediate deliverables, **not a redefinition of success**.
 
 **Fundamental invariant:** *Heuristics discover. Exact evidence proves. Verified plans mutate.*
+
+**Development principle:** *Implement what is sufficiently understood. Research what remains genuinely uncertain.* See [MASTER_CONTEXT section 41](MASTER_CONTEXT.md#41-current-development-strategy--2026-10-14). Implement resolved technical findings when their scope is authorized, with proportionate independent testing. Reserve research for genuine uncertainty, contradictory evidence or material security/preservation questions that block a concrete implementation decision. Reuse project mechanisms; progress is usable functionality, not additional planning stages or duplicate documents.
 
 `RELATED != EQUIVALENT != SAFE_TO_MERGE != SAFE_TO_REMOVE`. A comparison label is not mutation authority. Unknown or conflicting evidence blocks destructive action; false negatives in cleanup are preferable to false-positive deletion.
 
@@ -28,6 +30,12 @@ The intended final product is **not** a general-purpose library manager or a BeM
 - **Blocked/unknown:** absence of evidence or an unsupported condition. It is never silently coerced to safe or equivalent.
 
 The first mutation-capable release must avoid automatic rewriting of BMS/BMSON. If preserving colliding variants requires changes to chart references or bytes, mark `MANUAL_CONFLICT` / blocked, or design a later separately reviewed rewrite feature that preserves/explicitly accounts for historical chart identity impacts (scores, IR, replays). Preservation of raw bytes and preservation of playback semantics are both obligations.
+
+### 1.2 Next usable milestone: exact folder-content comparison
+
+Deliver a read-only comparison increment on synthetic/disposable libraries first: all observed charts, strong-hash byte identities, exclusive files, same-relative-path conflicts, same-content/different-name cases, physical multiplicity and explicit missing/unreadable/unstable/UNKNOWN/BLOCKED outcomes in deterministic user-facing results. This is future Phase 2B functionality, not an implemented comparison command or a replacement for the final fusion/cleanup goal. Its first scope remains complete EXACT_ONLY components under the existing contract; wider related candidates require a separately reviewed scope.
+
+Implementation, verification and real-data access are separate permissions. Unresolved conditions block affected operations without making unsupported behavior safe or unnecessarily blocking unrelated authorized code work. Source Inspector native acceptance applies to its selected acquisition/verification workstream; B1–B6 are not automatically dependencies of every code change. Actual safe-discovery tooling, pilot provenance, independent verification, preservation/observation and real-access gates remain mandatory.
 
 ## 2. Verified starting point and boundaries
 
@@ -71,7 +79,7 @@ Index opaque chart bytes, compute exact chart identities, establish folder chart
 
 ### Phase 2 — Exact filesystem/content evidence `[2A IMPLEMENTED SYNTHETICALLY; 2B PENDING]`
 
-**2A:** independent read-only Phase 1 source capture; fresh direct-chart verification; bounded metadata inventory of **complete EXACT_ONLY components**; native identity, path safety, sealed provenance and deterministic reports. Next: resolve independent-source-inspection/native blockers, review current source/report prerequisites and, **only with separate approval**, conduct the planned real-library pilot, independent review and potentially a separately approved full preflight.
+**2A:** independent read-only Phase 1 source capture; fresh direct-chart verification; bounded metadata inventory of **complete EXACT_ONLY components**; native identity, path safety, sealed provenance and deterministic reports. Apply authorized, resolved source-capture corrections with synthetic regression. Native tool acceptance remains specific to the chosen discovery/verification route; it does not block unrelated safe implementation. Before real access, resolve applicable opening, provenance, preservation and observation requirements, then, **only with separate approval**, conduct the planned pilot, independent review and potentially a separately approved full preflight.
 
 **2B:** after accepted 2A evidence and its own design/authorization gate, freshly hash the complete selected physical-file observation surface. Join digest evidence to relative-path trees and multiplicity-preserving content multisets. Preserve all `UNKNOWN`, `UNSTABLE`, unreadable, missing, unsafe, incomplete and stale outcomes; never publish partial-pair equality for an incomplete component. Metadata-only equality is forbidden.
 
@@ -131,12 +139,14 @@ After independent post-publication verification, prepare a **separate** per-inst
 
 Every new phase requires: exact Git baseline and worktree status; reviewed scope and source/target boundaries; design/contract revisions explicitly authorized; deterministic tests and independent acceptance; relevant performance measurements; no source writes from analyzers; no silent migration of evidence; no automatic advancing of gates. Real-library reads/writes, mutation implementation, git staging/commit/push and subsequent phases require their own applicable approvals.
 
-## 5. Research questions to prioritize (instead of general library-management development)
+## 5. Concrete implementation needs and unresolved research questions
+
+Implement established solutions under bounded authorization. The questions below justify additional research only where existing evidence cannot settle a concrete decision; they do not require another design phase for every functional increment.
 
 | Priority | Research question | Smallest useful proof or experiment | Depends on |
 | --- | --- | --- | --- |
-| **P0 — immediate operational** | Can Phase 2A and its native source-reader boundary be independently accepted and its real pilot safely scoped? | Close explicitly documented native/SQLite/WAL observation gaps; reviewer disposition; authorized four-component pilot and independently reproduced receipts if approved. | Existing Phase 2A contracts and explicit authorizations. |
-| **P1 — immediate design** | How do we hash all required candidate resources efficiently **without** hashing a terabyte blindly or losing multiplicity? | Independent Phase 2B schema/protocol design, synthetic same-name/different-byte and hardlink/nesting tests, bounded I/O and complete component seals. | Valid 2A preflight plus 2B gate. |
+| **P0 — immediate implementation/safety** | Can Phase 2A's source-opening boundary and future pilot be accepted for their exact scopes? | Implement the authorized pre-provider WAL-header refusal and regressions; obtain reviewer disposition and applicable native/provenance/preservation evidence before separately authorized real discovery/pilot. | Existing Phase 2A contracts and distinct implementation/verification/real-access authorizations. |
+| **P1 — next usable increment** | How do we compare exact candidate contents without hashing a terabyte blindly or losing multiplicity? | Resolve only outstanding Phase 2B schema/compatibility decisions; once explicitly authorized, implement a bounded synthetic vertical slice using accepted-manifest validation, fresh SHA-256, complete file coverage and exact path/multiset outcomes under the existing contract. | Valid sealed synthetic 2A scope, separately reviewed 2B implementation/schema gate; real execution needs its own approval. |
 | **P2 — parallel offline research** | What are the **conservation** gaps of modern Neeted's parsers, resolver and collision policy? | Source-to-contract matrix at pinned commit; minimal self-created fixture suite: matching MD5, colliding resource name with same size/time but different bytes, conditional unused branch, resource-only folders. No source mutation outside disposable copies. | Public documentation/code only; provenance review. |
 | **P3 — parser design** | How to enumerate potential resources from malformed and nested `RANDOM/IF/SWITCH` safely? | Formal conditional-dependency model plus independent golden fixtures and bounded branch analysis. | Phase 3 design; no real-library reads without approval. |
 | **P4 — resolver design** | When can two physical files with different paths substitute without breaking references? | File/path/encoding/simulator compatibility matrix; independent fixtures preserving chart bytes; include nested roots, external references and case collisions. | Phases 3–4. |
@@ -167,10 +177,10 @@ Tests of Neeted on disposable fixtures can be an **external comparator**, but sh
 
 ## 7. Near-term execution sequence and decision rules
 
-1. **Documentation only (this revision):** review and accept current roadmap; archive historical planning by reference. Do **not** change Phase 1/2A contracts, historical measured outcomes or test claims. This is not operational authorization.
-2. **Existing Phase 2A review:** resolve source-inspector native blocker, historical WAL-opening concern and appropriate provenance/preservation oracle, each by its own approved workstream. Do not assert prior work is accepted when the reports say 'ready for independent review'.
+1. **Implement resolved findings when authorized:** prefer small, usable corrections and functional increments with proportionate regression, preserving contracts and historical evidence. Current strategy documentation is not operational or next-phase authorization.
+2. **Phase 2A safety and review:** implement the specifically authorized WAL pre-open correction; independently review it and resolve appropriate acquisition/provenance/preservation evidence for the operation actually proposed. Native Source Inspector gates remain in their applicable workstream. Do not promote READY_FOR_REVIEW to accepted or weaken real-pilot prerequisites.
 3. **Real pilot, when specifically approved:** current Phase 1 source/report discovery; freeze accepted EXACT_ONLY component closures; separately approve pilot, receipt verification and any full 2A run. No speculative real-source commands in this roadmap.
-4. **Phase 2B bounded design and authorization:** write and review its precise content evidence contract/schema/tests and perform synthetic implementation only in a separately authorized task. Pilot success is not an automatic 2B permission.
+4. **Phase 2B usable synthetic implementation, when separately authorized:** use the existing content evidence contract, settle necessary schema/compatibility decisions and implement the smallest complete comparison increment on owned synthetic preflight evidence. Additional research addresses only unresolved material decisions. Real execution and broader candidate scope require their own gates; pilot success grants no automatic 2B permission.
 5. **Parallel research, not parallel permission:** investigate modern Neeted gaps and independent BMS/BMSON dependency semantics using public code and **synthetic** fixtures, documenting evidence and uncertainty without modifying the source library.
 6. **Continue Phase 3 through Phase 9** through distinct reviewed gates; success is **verified fusion and cleanup**, not merely producing reports.
 

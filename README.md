@@ -8,6 +8,8 @@ required chart-resource relationships. This is not a general library manager.
 See the [current nine-phase roadmap](ROADMAP.md) for the final mutation gates
 and priority research gaps; historical design remains in MASTER_CONTEXT.md.
 
+Development follows [the current master-context strategy](MASTER_CONTEXT.md#41-current-development-strategy--2026-10-14): implement sufficiently understood capabilities and research genuinely unresolved questions. The next usable milestone is exact read-only folder-content comparison on bounded synthetic/disposable inputs; this Phase 2B capability is not implemented or authorized yet.
+
 Implemented scope: validated `PHASE_1.CHART_INDEX_AND_RELATIONSHIP_DISCOVERY`
 and `PHASE_2A.READ_ONLY_PREFLIGHT` with synthetic validation on Windows.
 Heuristics discover. Exact evidence proves. Verified plans mutate.
@@ -53,6 +55,10 @@ using metadata only. It persists an independent `phase2.db`, a deterministic
 preflight seal and four reports. Non-chart resources and unselected nested
 charts are not payload-read. Windows native identity, alias and exclusion
 checks are mandatory; unsupported configurations fail closed.
+Before source SQLite provider access, capture now checks the guarded 100-byte
+header, exact magic and rollback format versions 1/1; WAL without sidecars,
+mixed/unknown versions and truncated headers are refused. This bounded safeguard
+does not establish complete native nonmutation evidence or authorize a real pilot.
 
 ```powershell
 dotnet run --project src/BmsLibraryAudit.Cli -c Release -- phase2 preflight --source-db C:\Synthetic\audit.db --source-scan 1 --db C:\Synthetic\phase2.db --output C:\Synthetic\preflight

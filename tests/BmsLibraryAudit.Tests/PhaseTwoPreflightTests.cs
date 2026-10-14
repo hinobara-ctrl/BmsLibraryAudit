@@ -20,6 +20,149 @@ public sealed class WindowsPhaseTwoTheoryAttribute : TheoryAttribute
 
 public sealed class PhaseTwoPreflightTests
 {
+    [Theory]
+    [InlineData(1, 1, true)]
+    [InlineData(2, 2, false)]
+    [InlineData(1, 2, false)]
+    [InlineData(2, 1, false)]
+    [InlineData(0, 1, false)]
+    [InlineData(1, 0, false)]
+    [InlineData(0, 0, false)]
+    [InlineData(3, 1, false)]
+    [InlineData(1, 3, false)]
+    [InlineData(255, 255, false)]
+    public void SourceHeaderAcceptsOnlyLiteralRollbackVersions(int writeVersion, int readVersion, bool accepted)
+    {
+        var bytes = LiteralHeader(); bytes[18] = (byte)writeVersion; bytes[19] = (byte)readVersion;
+        using var source = new MemoryStream(bytes); source.Position = 37;
+        if (accepted) PhaseOneSourceCapture.ValidateHeader(source, default);
+        else Assert.StartsWith("SOURCE_HEADER_UNSUPPORTED:", Assert.Throws<InvalidOperationException>(() => PhaseOneSourceCapture.ValidateHeader(source, default)).Message);
+        Assert.Equal(37, source.Position); Assert.True(source.CanRead); Assert.Equal(bytes, source.ToArray());
+    }
+
+    [Fact]
+    public void SourceHeaderRequiresExactMagicIncludingTerminalNul()
+    {
+        var bytes = LiteralHeader(); bytes[15] = (byte)'x';
+        using var source = new MemoryStream(bytes); source.Position = 9;
+        Assert.StartsWith("SOURCE_HEADER_INVALID:", Assert.Throws<InvalidOperationException>(() => PhaseOneSourceCapture.ValidateHeader(source, default)).Message);
+        Assert.Equal(9, source.Position); Assert.Equal(bytes, source.ToArray());
+    }
+
+    [Theory]
+    [InlineData(0)] [InlineData(16)] [InlineData(99)]
+    public void SourceHeaderUnexpectedEofCannotAcceptAnIncompleteHeader(int length)
+    {
+        using var source = new MemoryStream(LiteralHeader()[..length]); source.Position = length;
+        Assert.Contains("truncated", Assert.Throws<InvalidOperationException>(() => PhaseOneSourceCapture.ValidateHeader(source, default)).Message);
+        Assert.Equal(length, source.Position);
+    }
+
+    [Theory]
+    [InlineData(1)] [InlineData(7)] [InlineData(64)] [InlineData(100)]
+    public void SourceHeaderShortReadsConsumeExactlyOneHeaderAndRestorePosition(int chunk)
+    {
+        var bytes = LiteralHeader().Concat(new byte[] { 0xa5, 0x5a }).ToArray();
+        using var source = new HeaderStream(bytes, chunk); source.Position = 41;
+        PhaseOneSourceCapture.ValidateHeader(source, default);
+        Assert.Equal(100, source.BytesRead); Assert.Equal((100 + chunk - 1) / chunk, source.ReadCalls);
+        Assert.Equal(41, source.Position); Assert.True(source.CanRead); Assert.Equal(bytes, source.ToArray());
+    }
+
+    [Theory]
+    [InlineData("io")] [InlineData("unsupported")] [InlineData("denied")]
+    public void SourceHeaderReadFailurePropagatesAndRestoresPosition(string kind)
+    {
+        Exception failure = kind switch { "io" => new IOException("injected read failure"),
+            "unsupported" => new NotSupportedException("injected read failure"), _ => new UnauthorizedAccessException("injected read failure") };
+        using var source = new HeaderStream(LiteralHeader(), 7, failure: failure); source.Position = 29;
+        Assert.Same(failure, Record.Exception(() => PhaseOneSourceCapture.ValidateHeader(source, default)));
+        Assert.Equal(7, source.BytesRead); Assert.Equal(29, source.Position); Assert.True(source.CanRead);
+    }
+
+    [Theory]
+    [InlineData("before")] [InlineData("between")] [InlineData("last")]
+    public void SourceHeaderCancellationCannotAcceptEvenTheLastRead(string stage)
+    {
+        using var cancel = new CancellationTokenSource();
+        using var source = new HeaderStream(LiteralHeader(), stage == "between" ? 7 : 100,
+            afterRead: stage == "before" ? null : cancel.Cancel);
+        source.Position = 33; if (stage == "before") cancel.Cancel();
+        Assert.Throws<OperationCanceledException>(() => PhaseOneSourceCapture.ValidateHeader(source, cancel.Token));
+        Assert.Equal(stage == "before" ? 0 : stage == "between" ? 7 : 100, source.BytesRead);
+        Assert.Equal(33, source.Position); Assert.True(source.CanRead);
+    }
+
+    [WindowsPhaseTwoTheory]
+    [InlineData("wal")] [InlineData("write-mixed")] [InlineData("read-mixed")]
+    [InlineData("write-zero")] [InlineData("read-zero")]
+    [InlineData("write-unknown")] [InlineData("read-unknown")]
+    [InlineData("magic")] [InlineData("empty")] [InlineData("truncated")]
+    public void SourceHeaderRefusalNeverReachesProviderOrCreatesDestination(string problem)
+    {
+        using var fixture = new Fixture(); fixture.Pair(); fixture.Scan();
+        var bytes = File.ReadAllBytes(fixture.Source);
+        Assert.Equal(1, bytes[18]); Assert.Equal(1, bytes[19]);
+        switch (problem)
+        {
+            case "wal": bytes[18] = 2; bytes[19] = 2; break;
+            case "write-mixed": bytes[18] = 2; break;
+            case "read-mixed": bytes[19] = 2; break;
+            case "write-zero": bytes[18] = 0; break;
+            case "read-zero": bytes[19] = 0; break;
+            case "write-unknown": bytes[18] = 3; break;
+            case "read-unknown": bytes[19] = 3; break;
+            case "magic": bytes[0] = (byte)'X'; break;
+            case "empty": bytes = []; break;
+            case "truncated": bytes = bytes[..99]; break;
+        }
+        // Fixture mutation precedes its preservation baseline; refused bytes are never opened by SQLite.
+        File.WriteAllBytes(fixture.Source, bytes);
+        var before = PhaseTwoSafety.Inspect(fixture.Source); var digest = SHA256.HashData(bytes);
+        foreach (var suffix in new[] { "-journal", "-wal", "-shm" }) Assert.False(PhaseTwoSafety.Exists(fixture.Source + suffix));
+        var providerCalls = 0;
+        Assert.StartsWith("SOURCE_HEADER_", Assert.Throws<InvalidOperationException>(() =>
+            PhaseOneSourceCapture.Capture(fixture.Options(), null, default, () => providerCalls++)).Message);
+        Assert.Equal(0, providerCalls);
+        var files = new InstrumentedFiles();
+        Assert.StartsWith("SOURCE_HEADER_", Assert.Throws<InvalidOperationException>(() => fixture.Run(files)).Message);
+        Assert.Empty(files.Reads); Assert.False(Directory.Exists(fixture.Output)); Assert.False(File.Exists(fixture.Db));
+        Assert.Equal(bytes, File.ReadAllBytes(fixture.Source)); Assert.Equal(digest, SHA256.HashData(File.ReadAllBytes(fixture.Source)));
+        Assert.Equal(before, PhaseTwoSafety.Inspect(fixture.Source));
+        foreach (var suffix in new[] { "-journal", "-wal", "-shm" }) Assert.False(PhaseTwoSafety.Exists(fixture.Source + suffix));
+    }
+
+    [WindowsPhaseTwoFact]
+    public void SourceHeaderRollbackControlReachesProviderAndPreservesCaptureFingerprint()
+    {
+        using var fixture = new Fixture(); fixture.Pair(); fixture.Scan();
+        var bytes = File.ReadAllBytes(fixture.Source); var before = PhaseTwoSafety.Inspect(fixture.Source); var providerCalls = 0;
+        var captured = PhaseOneSourceCapture.Capture(fixture.Options(), null, default, () => providerCalls++);
+        Assert.Equal(1, providerCalls); Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(bytes)), captured.Sha256);
+        Assert.Equal(before, captured.Facts); Assert.Equal(1, captured.ScanId); Assert.Equal(2, captured.Charts.Count);
+        Assert.Equal(1, fixture.Run().AdmittedComponents);
+        Assert.Equal(bytes, File.ReadAllBytes(fixture.Source)); Assert.Equal(before, PhaseTwoSafety.Inspect(fixture.Source));
+        foreach (var suffix in new[] { "-journal", "-wal", "-shm" }) Assert.False(PhaseTwoSafety.Exists(fixture.Source + suffix));
+    }
+
+    private static byte[] LiteralHeader()
+    {
+        var bytes = new byte[100]; Encoding.ASCII.GetBytes("SQLite format 3\0").CopyTo(bytes, 0);
+        bytes[18] = 1; bytes[19] = 1; return bytes;
+    }
+
+    private sealed class HeaderStream(byte[] bytes, int chunk, Exception? failure = null, Action? afterRead = null) : MemoryStream(bytes)
+    {
+        public int BytesRead { get; private set; }
+        public int ReadCalls { get; private set; }
+        public override int Read(Span<byte> buffer)
+        {
+            if (++ReadCalls == 2 && failure is not null) throw failure;
+            var count = base.Read(buffer[..Math.Min(chunk, buffer.Length)]);
+            BytesRead += count; afterRead?.Invoke(); return count;
+        }
+    }
+
     [WindowsPhaseTwoFact]
     public void FreshChartRevalidationDoesNotReadResourceOrUnselectedNestedCharts()
     {

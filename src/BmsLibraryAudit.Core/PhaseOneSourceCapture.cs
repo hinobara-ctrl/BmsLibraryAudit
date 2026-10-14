@@ -12,7 +12,7 @@ internal sealed record CapturedPhaseOne(string OriginalPath, NativePathFacts Fac
 internal static class PhaseOneSourceCapture
 {
     internal static CapturedPhaseOne Capture(PhaseTwoPreflightOptions options, PhaseTwoTestHooks? hooks,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, Action? providerOpening = null)
     {
         var path = PathPolicy.Absolute(options.SourceDatabasePath);
         PhaseTwoSafety.ValidateDestinations(path, options.DatabasePath, options.OutputDirectory, []);
@@ -22,6 +22,8 @@ internal static class PhaseOneSourceCapture
         using var guard = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024, FileOptions.SequentialScan);
         var guarded = PhaseTwoSafety.Inspect(guard.SafeFileHandle, path);
         if (original != guarded) throw new IOException("SOURCE_CHANGED: guarded identity differs.");
+        ValidateHeader(guard, cancellationToken);
+        providerOpening?.Invoke(); // Internal test boundary; not native I/O telemetry.
         using var connection = PhaseTwoDatabase.Connect(path, SqliteOpenMode.ReadOnly);
         PhaseTwoDatabase.RequireScalar(connection, "PRAGMA application_id", 0x424D5341);
         PhaseTwoDatabase.RequireScalar(connection, "PRAGMA user_version", 1);
@@ -102,6 +104,31 @@ internal static class PhaseOneSourceCapture
                 throw new IOException("SOURCE_CHANGED: unstable database fingerprint.");
             return Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
         }
+    }
+    internal static void ValidateHeader(Stream source, CancellationToken cancellationToken)
+    {
+        var position = source.Position;
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            source.Position = 0;
+            Span<byte> header = stackalloc byte[100];
+            var received = 0;
+            while (received < header.Length)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var count = source.Read(header[received..]);
+                cancellationToken.ThrowIfCancellationRequested();
+                if (count == 0) throw new InvalidOperationException("SOURCE_HEADER_INVALID: truncated SQLite header.");
+                received += count;
+            }
+            if (!header[..16].SequenceEqual("SQLite format 3\0"u8))
+                throw new InvalidOperationException("SOURCE_HEADER_INVALID: incorrect SQLite magic.");
+            // Offset 18 is the write version; offset 19 is the read version.
+            if (header[18] != 1 || header[19] != 1)
+                throw new InvalidOperationException("SOURCE_HEADER_UNSUPPORTED: only SQLite rollback format 1/1 is supported; WAL, mixed and unknown formats are refused before provider access.");
+        }
+        finally { source.Position = position; }
     }
     internal static bool Digest(string? value, int length) => value is not null && value.Length == length && value.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f');
 }

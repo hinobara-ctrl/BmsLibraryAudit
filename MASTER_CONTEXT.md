@@ -1341,3 +1341,82 @@ Phase 1 succeeds when the program can independently take arbitrary song roots an
 - modifying no source-library file.
 
 That is the intentional stopping point for the first implementation.
+
+---
+
+# 41. Current Development Strategy — 2026-10-14
+
+The owner adopts this current strategy without rewriting the historical
+observations, original phase definitions or preservation requirements above:
+
+**Implement what is sufficiently understood. Research what remains genuinely uncertain.**
+
+**Heuristics discover. Exact evidence proves. Verified plans mutate.**
+
+## 41.1 Implementation and proportionate research
+
+Turn established technical findings into working functionality when they directly
+serve the project goal and the implementation scope is authorized. Prefer the
+smallest independently testable increment, reusing existing project mechanisms.
+Judge progress by usable, tested capabilities rather than document length, test
+count or the number of research stages.
+
+Research is justified by genuinely unknown required behavior, contradictory
+evidence, unresolved material security/preservation risk, an implementation
+decision that existing evidence cannot responsibly settle, or experiments needed
+to distinguish viable alternatives. Otherwise implement and test proportionately;
+do not commission another investigation to restate established conclusions.
+
+Distinguish demonstrated defects, missing experimental evidence and unknown
+conditions. Block the operations an unresolved condition affects, while allowing
+unrelated authorized safe work. UNKNOWN/BLOCKED never becomes safe by assumption.
+Implementation-first does not mean mutation-first or weaker preservation proof.
+Implementation, verification, real-data access and subsequent phases have distinct
+authorization gates; passing synthetic tests does not cross them automatically.
+
+## 41.2 Minimum usable intermediate product
+
+The next substantial functional milestone is read-only exact comparison of related
+BMS/BMSON folders, initially on synthetic/disposable libraries and a bounded class
+of candidates. The existing Phase 2 contract limits v1 to complete EXACT_ONLY
+components; broader related/subset/overlap scope needs separate authorization and
+contract review. Phase 2A currently provides metadata and fresh direct-chart
+evidence; Phase 2B content hashing/comparison remains unimplemented and unauthorized.
+
+The future comparison should report all observed chart files; strong-hash content
+identity; exclusive files; same-relative-path content conflicts; identical content
+under different names; missing, unreadable and unstable entries; explicit
+UNKNOWN/BLOCKED outcomes; and deterministic, understandable results. Preserve
+physical multiplicity, observation boundaries and the distinction between file
+equality and package/dependency safety. No proposed comparison CLI is advertised
+as available. This usable milestone is intermediate, not project completion.
+
+## 41.3 Final objective and incremental delivery
+
+The mandatory final objective remains verified directory fusion and removal of
+proven redundant file instances, without losing unique charts, resource variants,
+required references or auxiliary content. Reports and duplicate discovery do not
+redefine completion. Read-only analysis and future destructive execution stay
+separate. Execution requires independently verified plans, freshness checks,
+staging, verification, controlled publication and separately authorized cleanup.
+
+Deliver vertical functional increments: identify related charts; compare actual
+file contents; resolve chart/resource dependencies; classify mergeable/conflicting
+packages; produce concrete fusion plans; execute independently verified mergers;
+remove precisely approved redundant instances. Retain all nine established phase
+identifiers, contracts and historical acceptance evidence; these increments do
+not renumber phases or bypass gates. See the current [ROADMAP](ROADMAP.md).
+
+## 41.4 Complexity and ecosystem lessons
+
+Avoid repeated analysis of established behavior, duplicate findings documents,
+verification-only subsystems without demonstrated need, large speculative
+refactors and rebuilding available functionality. The project is a usable,
+evidence-based consolidator, not a BeMusicSeeker-style general library manager.
+Mandatory preservation evidence remains necessary even when difficult to obtain.
+
+BeMusicSeeker and beatoraja/LR2oraja supply useful comparative knowledge about
+chart indexes, relationships, resource handling and compatibility. Apply supported
+conceptual lessons through independent code; do not copy third-party implementations
+or automatically add external database importers. External records and heuristics
+are neither current filesystem truth nor permission to delete resources.
