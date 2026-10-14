@@ -1434,3 +1434,17 @@ semantics and historical evidence remain intact. Real Phase 2 execution, Phase 3
 consolidation and source mutation are not authorized by this implementation.
 See README.md for commands and temporal/memory limits; dependency extraction is
 the next separately authorized functional step toward safe consolidation.
+
+# 43. Phase 3 syntactic extraction — 2026-10-14
+
+Bounded synthetic implementation adds explicit per-chart `phase3 inspect`.
+Accepted original bytes and strict decoding candidates remain separate from
+declarations, logical resource groups, potential usages and authored paths.
+BMS/BME/BML/PMS core syntax and BMSON 1.0.0 dependency fields are supported;
+visible conditional alternatives, duplicate declarations and unknown evidence
+are retained without branch selection or first/last-wins. Coverage and limits
+are explicit. Dependency closure is always unproved; no physical resolver,
+Phase 2B provenance join, required/unused classification or mutation is added.
+Existing Phase 2 opening reuses the guarded rollback-header validator before
+provider access. README documents commands, bounded limits and synthetic tests.
+Real execution and Phase 4 remain subject to new explicit authorization.

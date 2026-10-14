@@ -7,12 +7,13 @@ return Run(args);
 static int Run(string[] args)
 {
     const string usage = """
-        BmsLibraryAudit: Phase 1 and synthetic-validated Phase 2A/2B (Windows)
+        BmsLibraryAudit: Phase 1 and synthetic-validated Phase 2A/2B/3 (Windows)
         bms-audit scan --db <audit.db> --root <path> [--root <path> ...] [--rehash-all]
         bms-audit report --db <audit.db> --output <new-or-empty-directory>
         bms-audit phase2 preflight --source-db <audit.db> --source-scan <id> --db <phase2.db> --output <new-or-empty-directory> [--component <EXACT_ONLY-id> ...]
         bms-audit phase2 hash --db <phase2.db> --preflight <id> --accept-manifest <sha256> --output <new-or-empty-directory>
         bms-audit phase2 report --db <phase2.db> --session <id> --output <new-or-empty-directory>
+        bms-audit phase3 inspect --chart <synthetic-chart> --output <new-or-empty-directory>
         CONTENT is explicit and requires an accepted completed PREFLIGHT. Real-library execution requires separate authorization.
         Outputs must be outside source libraries. Sources are only read.
         """;
@@ -23,6 +24,7 @@ static int Run(string[] args)
     try
     {
         if (args[0] == "phase2") return RunPhaseTwo(args, cancellation.Token);
+        if (args[0] == "phase3") return RunPhaseThree(args, cancellation.Token);
         var command = args[0];
         if (command is not ("scan" or "report")) throw new ArgumentException($"Unknown command: {command}");
         string? db = null, output = null;
@@ -55,11 +57,29 @@ static int Run(string[] args)
         Console.WriteLine($"Reports: summary.json, duplicate_charts.csv, folder_candidates.csv, clusters.csv\nCandidate pairs: {analysis.Candidates.Count}; duplicate SHA-256 groups: {analysis.DuplicateGroups.Count}");
         return 0;
     }
-    catch (OperationCanceledException) { Console.Error.WriteLine(args[0] == "phase2" ? "Phase 2 operation cancelled; inspect the persisted session/export state." : "Scan cancelled; transaction rolled back."); return 130; }
+    catch (OperationCanceledException) { Console.Error.WriteLine(args[0] == "phase2" ? "Phase 2 operation cancelled; inspect the persisted session/export state." : args[0] == "phase3" ? "Phase 3 inspection cancelled; any partial export is not complete evidence." : "Scan cancelled; transaction rolled back."); return 130; }
     catch (Exception exception) when (args[0] == "phase2" && exception is JsonException or FormatException or InvalidCastException or OverflowException)
     { Console.Error.WriteLine($"Error: invalid Phase 2 input/evidence: {exception.Message}"); return 1; }
     catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or IOException or UnauthorizedAccessException or SqliteException)
     { Console.Error.WriteLine($"Error: {exception.Message}"); return 1; }
+}
+
+static int RunPhaseThree(string[] args, CancellationToken token)
+{
+    if (args.Length < 2 || args[1] != "inspect") throw new ArgumentException("phase3 requires inspect.");
+    var options = new Dictionary<string, string>(StringComparer.Ordinal);
+    for (var i = 2; i < args.Length; i++)
+    {
+        var key = args[i];
+        if (key is not ("--chart" or "--output") || ++i >= args.Length || args[i].StartsWith("--", StringComparison.Ordinal) || !options.TryAdd(key, args[i]))
+            throw new ArgumentException("Unknown, duplicate or missing Phase 3 option: " + key);
+    }
+    string Required(string key) => options.TryGetValue(key, out var value) ? value : throw new ArgumentException(key + " is required.");
+    var inspection = PhaseThreeInspector.Inspect(Required("--chart"), Required("--output"), token: token);
+    Console.WriteLine(JsonSerializer.Serialize(new { inspection.Analysis.Format, inspection.Analysis.Sha256, inspection.Analysis.SyntaxCoverage,
+        Declarations = inspection.Analysis.Declarations.Length, Usages = inspection.Analysis.Usages.Length, Diagnostics = inspection.Analysis.Diagnostics.Length,
+        inspection.Analysis.DependencyClosureProven, Report = Path.Combine(PathPolicy.Absolute(Required("--output")), "chart_inspection.json") }, new JsonSerializerOptions { WriteIndented = true }));
+    return inspection.Analysis.ExitCode;
 }
 
 static int RunPhaseTwo(string[] args, CancellationToken token)

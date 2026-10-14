@@ -8,16 +8,16 @@ required chart-resource relationships. This is not a general library manager.
 See the [current nine-phase roadmap](ROADMAP.md) for the final mutation gates
 and priority research gaps; historical design remains in MASTER_CONTEXT.md.
 
-Development follows [the current master-context strategy](MASTER_CONTEXT.md#41-current-development-strategy--2026-10-14): implement sufficiently understood capabilities and research genuinely unresolved questions. Phase 2B now compares exact folder contents on bounded synthetic inputs. The next functional milestone is conservative chart/resource dependency extraction; it requires separate authorization.
+Development follows [the current master-context strategy](MASTER_CONTEXT.md#41-current-development-strategy--2026-10-14): implement sufficiently understood capabilities and research genuinely unresolved questions. Phase 2B compares exact folder contents and Phase 3 extracts resource syntax from bounded synthetic charts. Physical resource resolution is the next separately authorized functional milestone.
 
 Implemented scope: validated `PHASE_1.CHART_INDEX_AND_RELATIONSHIP_DISCOVERY`
-and `PHASE_2A.READ_ONLY_PREFLIGHT` / `PHASE_2B.EXACT_CONTENT_EVIDENCE` with synthetic validation on Windows.
+and `PHASE_2A.READ_ONLY_PREFLIGHT` / `PHASE_2B.EXACT_CONTENT_EVIDENCE` / Phase 3 syntactic inspection with synthetic validation on Windows.
 Heuristics discover. Exact evidence proves. Verified plans mutate.
 
 `PHASE_1_STATUS: VALIDATED`. Phase 1 was validated against the real library;
 see [the real-library validation record](docs/PHASE_1_REAL_LIBRARY_VALIDATION.md).
 
-This phase indexes opaque chart bytes and reports chart-set relationships.
+Phase 1 indexes opaque chart bytes and reports chart-set relationships.
 It does not authorize consolidation or removal of any source content.
 
 The .NET 10 CLI builds an independent incremental SQLite index, streams MD5 and
@@ -114,14 +114,74 @@ PREFLIGHT canonical groups and report meaning remain intact. CONTENT uses the
 contract's four canonical groups, immutable terminal evidence and rederived
 comparisons during verification/export.
 
+Existing Phase 2 databases now undergo the same guarded, pre-provider rollback
+header validation as Phase 1 source capture. WAL 2/2, mixed/unknown versions,
+bad magic and truncated headers are refused without provider invocation or
+repair; legitimate new database initialization and in-memory schema generation
+remain supported. This does not establish real-source operational acceptance.
+
 Evidence describes stable read observations, not a simultaneous filesystem
 snapshot: metadata-preserving edits after a read can escape final checks. A hash,
 tree or multiset match grants no deletion/merge authority. OBSERVATION_ROOT is
-not PACKAGE_ROOT; chart resource dependencies, encoding/resolution, plans,
+not PACKAGE_ROOT; semantic dependency closure, physical resolution, plans,
 staging/publication and cleanup are not implemented. Hashing is sequential with
 a reused 64 KiB payload buffer; per-pair views and the existing captured chart
 analysis still use memory proportional to their scope. No real-library Phase 2B
 execution or large-scale performance acceptance is claimed.
+
+Phase 3 provides a per-file, read-only syntactic inspector without databases,
+library recursion or resource file access:
+
+```powershell
+# An explicitly created synthetic chart; reports are outside its source folder.
+dotnet src/BmsLibraryAudit.Cli/bin/Release/net10.0/bms-audit.dll phase3 inspect --chart .artifacts/synthetic-phase3/charts/chart.bms --output .artifacts/synthetic-phase3/report
+./scripts/Phase3-Smoke-Test.ps1
+```
+
+`chart_inspection.json` is deterministic UTF-8 without BOM, with retained original
+bytes (base64), fresh SHA-256, decoded text candidates, declarations, logical
+resource groups, potential usages, conditional contexts, raw unknown evidence
+and diagnostics. Source locations are BMS line/column or BMSON JSON pointers;
+duplicate JSON members remain separately observed and are diagnosed. No first-
+or last-wins rule is applied. `OBSERVED` describes syntax; `POTENTIAL`,
+`AMBIGUOUS`, `UNKNOWN` and `UNSUPPORTED` express the remaining uncertainty.
+
+BMS/BME/BML/PMS support includes WAV/BMP declarations, stage/banner/backdrop/
+preview paths, distinct BPM/STOP namespaces, recognized BGM/note/BGA channels,
+and syntactic RANDOM/IF/SWITCH families. All visible branch resources remain
+represented; reachability and simulator-specific extensions are deferred.
+Strict UTF-8, UTF-8 BOM and Windows CP932 are decoded without replacement.
+Successful decoding does not prove author intent: if both strict candidates
+produce different text, both extractions are retained. Authored path strings,
+including Unicode, spaces, separators and quotes, are never physically resolved
+or renamed.
+
+BMSON support is explicitly limited to dependency syntax of version `1.0.0`:
+sound-channel names and notes, BGA headers/events/layers/poor events, and the four
+documented image/preview fields in `info`. Lane, pulse, length and continuation
+facts remain recorded; audio slicing and playback simulation are not implemented.
+Legacy/unknown versions, duplicate/conflicting properties, unexpected types and
+unknown properties produce conservative diagnostics with retained raw evidence.
+The format references are the [BMSON specification](https://github.com/bemusic/bmson-spec),
+[original BM98 specification](https://bm98.yaneu.com/bm98/bmsformat.html) and
+[BMS command memo](https://hitkey.bms.ms/cmds). Implementation is independent.
+
+Default hard limits are 8 MiB per chart, 65,536 characters per BMS line, 50,000
+syntax facts, 64 conditional levels and 64 JSON nesting levels. The API can
+reduce these limits. Over-size files are not payload-read or hashed: their report
+has no byte digest/retained payload and explicitly incomplete coverage. Other
+limits preserve accepted bytes/decoded text and diagnose unprocessed evidence.
+Logical bindings are stored once per group, avoiding a declaration/use Cartesian
+expansion. These are bounded inspections, not large-library performance claims.
+
+Exit 0 means supported dependency syntax was extracted; exit 2 means incomplete
+or ambiguous coverage, 1 is an operational refusal/failure, and 130 cancellation.
+Output must be new/empty and outside the chart's source directory, using Windows
+native identity/alias checks. Syntactic coverage is not full chart validation or
+dependency closure: `dependency_closure_proven` is always false. No required/
+unused labels, physical bindings, Phase 2B provenance joins, Phase 4, rewrites,
+consolidation or removal are implemented. No real-library Phase 3 execution is
+authorized by synthetic validation.
 
 Deferred research: [Backbeat interoperability and library completeness](docs/BACKBEAT_INTEROPERABILITY_RESEARCH_NOTE.md)
 is a research record with no current integration or mutation authorization.

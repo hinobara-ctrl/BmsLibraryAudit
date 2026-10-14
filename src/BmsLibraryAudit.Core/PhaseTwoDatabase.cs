@@ -37,7 +37,7 @@ internal sealed partial class PhaseTwoDatabase : IDisposable
         using var command = connection.CreateCommand(); command.CommandText = sql;
         if (Convert.ToInt64(command.ExecuteScalar()) != expected) throw new InvalidOperationException("Database identity/schema mismatch: " + sql);
     }
-    internal static PhaseTwoDatabase Open(string path, bool writable)
+    internal static PhaseTwoDatabase Open(string path, bool writable, Action? beforeProviderOpen = null)
     {
         PhaseTwoSafety.RequirePlatform(); path = PathPolicy.Absolute(path);
         PhaseTwoSafety.RejectSidecars(path); PathPolicy.RejectReparseAncestors(path);
@@ -53,6 +53,8 @@ internal sealed partial class PhaseTwoDatabase : IDisposable
             guard = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             if (PhaseTwoSafety.Inspect(guard.SafeFileHandle, path).Identity != facts.Identity)
                 throw new IOException("Database identity changed before ownership probe.");
+            PhaseOneSourceCapture.ValidateHeader(guard, default);
+            beforeProviderOpen?.Invoke();
             using var probe = Connect(path, SqliteOpenMode.ReadOnly); Validate(probe);
         }
         else
@@ -65,6 +67,8 @@ internal sealed partial class PhaseTwoDatabase : IDisposable
         }
         var guarded = PhaseTwoSafety.Inspect(guard.SafeFileHandle, path);
         if (writable && guarded.LinkCount != 1) throw new IOException("Unsafe database link count.");
+        if (exists) PhaseOneSourceCapture.ValidateHeader(guard, default);
+        beforeProviderOpen?.Invoke();
         var connection = Connect(path, writable ? SqliteOpenMode.ReadWrite : SqliteOpenMode.ReadOnly);
         var database = new PhaseTwoDatabase(path, connection) { binding = guard, boundIdentity = guarded.Identity, boundResolvedPath = guarded.ResolvedPath, writable = writable };
         try
