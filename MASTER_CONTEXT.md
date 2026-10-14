@@ -1460,3 +1460,24 @@ renaming; failure cleanup is restricted to provably owned temporaries and never
 deletes user files/directories. Lost bindings or crashes may leave a temporary.
 These durable safeguards do not implement physical resolution or Phase 4, and
 synthetic validation is not real-library operational acceptance.
+
+# 45. Bounded Phase 4 evidence resolution — 2026-10-14
+
+The separately authorized synthetic increment joins reconstructed Phase 3 syntax
+from included bytes to exact accepted CONTENT SHA-256 and sealed physical chart
+membership. Only COMPLETE ADMITTED EXACT_ONLY components and explicitly selected
+observation roots are eligible. Source-library roots, observation roots, chart
+parents and unknown package boundaries remain distinct. Ordinary lexical resource
+paths resolve only against persisted successful physical evidence; original chart
+and resource payloads are never reopened to supplement missing evidence. Native
+directory/input metadata is used for protected report publication, not freshness
+of resource bytes. The evidence DB remains read-only and its schema unchanged.
+
+Authored strings, alternate decodings, duplicate declarations, shared memberships,
+hardlink paths and conditional alternatives are retained. A named bounded RANDOM/
+IF/ELSEIF/ELSE symbolic model qualifies possibilities without choosing a playback;
+unsupported or malformed semantics remain unknown. Even model-impossible syntax
+is preserved. Observed matches are historical, no-match is not absolute absence,
+and same hashes do not authorize name substitution or removal. Dependency closure
+and removal authority remain false. Full Phase 4 closure, Phase 5, real execution
+and any mutation require further evidence and separate applicable authorization.

@@ -8,10 +8,10 @@ required chart-resource relationships. This is not a general library manager.
 See the [current nine-phase roadmap](ROADMAP.md) for the final mutation gates
 and priority research gaps; historical design remains in MASTER_CONTEXT.md.
 
-Development follows [the current master-context strategy](MASTER_CONTEXT.md#41-current-development-strategy--2026-10-14): implement sufficiently understood capabilities and research genuinely unresolved questions. Phase 2B compares exact folder contents and Phase 3 extracts resource syntax from bounded synthetic charts. Physical resource resolution is the next separately authorized functional milestone.
+Development follows [the current master-context strategy](MASTER_CONTEXT.md#41-current-development-strategy--2026-10-14): implement sufficiently understood capabilities and research genuinely unresolved questions. Phase 2B compares exact folder contents, Phase 3 extracts resource syntax, and bounded Phase 4 joins verified syntax to sealed physical observations on synthetic inputs.
 
 Implemented scope: validated `PHASE_1.CHART_INDEX_AND_RELATIONSHIP_DISCOVERY`
-and `PHASE_2A.READ_ONLY_PREFLIGHT` / `PHASE_2B.EXACT_CONTENT_EVIDENCE` / Phase 3 syntactic inspection with synthetic validation on Windows.
+and `PHASE_2A.READ_ONLY_PREFLIGHT` / `PHASE_2B.EXACT_CONTENT_EVIDENCE` / Phase 3 syntactic inspection / `PHASE_4.CONSERVATIVE_DEPENDENCY_RESOLUTION` with synthetic validation on Windows. Phase 4 closure remains incomplete.
 Heuristics discover. Exact evidence proves. Verified plans mutate.
 
 `PHASE_1_STATUS: VALIDATED`. Phase 1 was validated against the real library;
@@ -123,7 +123,7 @@ remain supported. This does not establish real-source operational acceptance.
 Evidence describes stable read observations, not a simultaneous filesystem
 snapshot: metadata-preserving edits after a read can escape final checks. A hash,
 tree or multiset match grants no deletion/merge authority. OBSERVATION_ROOT is
-not PACKAGE_ROOT; semantic dependency closure, physical resolution, plans,
+not PACKAGE_ROOT; semantic dependency closure, universal player resolution, plans,
 staging/publication and cleanup are not implemented. Hashing is sequential with
 a reused 64 KiB payload buffer; per-pair views and the existing captured chart
 analysis still use memory proportional to their scope. No real-library Phase 2B
@@ -227,6 +227,102 @@ The launcher returns the supervisor PID and an owned run directory under
 failure, timeout or cancellation; no open shell or Codex monitoring is required.
 See [corrective hardening and performance](docs/PHASE_2A_CORRECTIVE_HARDENING_AND_PERFORMANCE_REPORT.md)
 for limits, schema incompatibility, build provenance and validation evidence.
+
+Phase 4 now supplies `phase4 resolve` for **owned synthetic evidence only**:
+
+```powershell
+# First build Release. The smoke creates all inputs and prints its artifact path.
+pwsh -NoLogo -NoProfile -NonInteractive -File scripts/Phase4-Smoke-Test.ps1
+
+# Example for that generated fixture; use the actual CONTENT ID and digest.
+dotnet src/BmsLibraryAudit.Cli/bin/Release/net10.0/bms-audit.dll phase4 resolve --db C:\Synthetic\phase2.db --content-session 2 --accept-content-manifest <content-sha256> --chart-report C:\Synthetic\syntax\chart_inspection.json --observation-root C:\SYNTHETIC\LIBRARY\A --output C:\Synthetic\resolved-new
+```
+
+Select the exact `root_key` from the accepted observation-root report explicitly.
+The evidence DB opens read-only; the compiled profile, exact COMPLETED CONTENT
+digest, linked PREFLIGHT/source seals, integrity, complete coverage and rederived
+comparisons are verified. Only an ADMITTED EXACT_ONLY component with COMPLETE,
+coherent, sealed and eligible CONTENT is admitted. Other INCOMPLETE components
+in that same globally coherent completed session do not invalidate the complete
+component; nothing is salvaged from an incomplete component. No schema, migration,
+resealing, persistent Phase 4 database or Phase 2 report receipt is introduced.
+
+The unsigned Phase 3 report must contain bounded original bytes and declared
+root/path/native chart identity, size, mtime and attributes matching a SUCCESS
+physical membership of the selected root. SHA-256 is recalculated from included
+bytes and must equal accepted CONTENT; the current parser reconstructs **every**
+syntactic field and rejects manipulated declarations, digests or coverage. The
+declared library root must match the sealed chart's Phase 1 source membership.
+Library-root native facts in the unsigned envelope remain hints, not an additional
+sealed identity proof. Missing evidence causes refusal; original charts/resources
+are never opened to supplement it. Directory/input metadata for native destination
+exclusion is still checked. A binding proves identity with a historical observation,
+not that the original chart remains identical today.
+
+`dependency_resolution.json` is deterministic UTF-8/LF and includes version/build
+provenance, CONTENT/PREFLIGHT/component/root IDs and digests, historical observation
+times, verified syntax, declaration/usage relations, lexical bases, physical entry
+IDs, native identities, SHA-256, candidates, states, predicates and limitations.
+Library root, observation root and chart parent remain distinct; package root is
+explicitly unknown. Repeated exports of identical evidence by the same build are
+byte-identical. All known captured roots and evidence inputs are protected; output
+must be new/empty. Phase 3 and 4 share exclusive temporary staging, flush and
+no-overwrite publication. Binding loss/crash can leave a temporary; only a provably
+owned temporary can be cleaned up, never user files or directories.
+
+Ordinary relative paths use explicit lexical chart-parent interpretation and
+selected observation memberships. `..` is accepted only within that root; mixed
+separators are normalized lexically. Ordinal spelling and Windows ordinal-ignore-case
+matches remain separate. No filesystem lookup of authored paths occurs. Outcomes:
+`OBSERVED_PATH_MATCH`, `AMBIGUOUS_PATH_MATCH`, `NO_OBSERVED_MATCH`, `OUT_OF_SCOPE`,
+`UNSUPPORTED_RESOLUTION`, `UNKNOWN`. No observed match does **not** establish absolute
+absence. Same-stem alternate/omitted extensions are retained as explicitly unproved
+proposals, never substituted; equal digests under distinct names grant no renaming
+or removal authority. Absolute/UNC/device paths are out of scope. ADS, quotes,
+reserved/invalid names, terminal dots/spaces and potential short-name aliases are
+unsupported without rewriting. Unicode is not normalized; all strict decoding
+alternatives, duplicate declarations and nested/shared memberships are preserved.
+Hardlink names retain separate entry/physical IDs despite shared native identity.
+
+The named `nested-random-first-matching-branch-v1` model computes intersections
+over symbolic random variables in `1..n`, IF equalities and earlier-branch exclusions
+for ELSEIF/ELSE. It supports well-formed nested scopes without enumerating products
+of random ranges. An outer RANDOM may end at EOF; nested scopes require explicit
+closure. This model follows the [original BMS specification](https://bm98.yaneu.com/bm98/bmsformat.html)
+and the documented [control-flow variants](https://hitkey.bms.ms/cmds.htm#CONTROL-FLOW).
+Those references also describe incompatible player behavior. `POSSIBLE_WITHIN_MODEL`
+and `IMPOSSIBLE_WITHIN_MODEL` are qualified conclusions only, with predicates and
+justification; **even impossible syntax and candidates remain in the report**.
+Direct content inside RANDOM without IF, malformed/unknown control evidence,
+SETRANDOM, SWITCH/SETSWITCH/CASE/DEF/SKIP and bounded-out conditions remain UNKNOWN.
+Every active RANDOM scope must have its own admitted IF-chain predicate, identified
+by that RANDOM's context ID. Predicates inherited from an outer scope or belonging
+to an inner scope do not cover an unguarded RANDOM; reachability stays UNKNOWN
+before any contradiction reduction, while observed physical candidates remain.
+Logical usage links are namespace/decoding-specific syntactic possibilities and
+are not first/last-wins playback bindings; mutually exclusive pairs are retained.
+No REQUIRED_ALWAYS/REQUIRED_CONDITIONAL/DECLARED_UNUSED classification is asserted.
+Dependency closure and removal authority always remain false.
+
+Defaults/hard caps (API callers can reduce them): 64 MiB input/output report,
+8 MiB included chart bytes, 50,000 entries per syntactic evidence array (two
+decodings), 100,000 selected inventory paths, 50,000 declarations/usages,
+64 candidates or usage links per declaration, 100,000 physical links and 100,000
+usage links, depth 64 and 100,000 symbolic terms. Route/stem indexes avoid repeated
+inventory scans per declaration. Inventory/reference/candidate/symbolic limits
+yield explicit INCOMPLETE/UNKNOWN; retained syntax is not silently dropped. Input
+or serialized-output size limits refuse publication with an explicit INCOMPLETE
+error. Existing Phase 2 seal/graph/comparison verification still has its documented
+scope-sized cost; this is not million-file or universal simulator acceptance.
+The owned 400-resource/200-declaration regression verifies indexed moderate input.
+
+Exit 0 means completed observed-path analysis and supported syntax within the
+bounded model, **never full dependency closure**; a literal NO_OBSERVED_MATCH can
+still have exit 0. Exit 2 retains incomplete/ambiguous/unsupported syntax or links;
+1 refuses invalid evidence/destination or publication, and 130 means cancellation.
+Full player-specific lookup, branch-sensitive effective declaration semantics,
+required/unused proof and conservative dependency closure remain genuine Phase 4
+work. Phase 5, real-library execution and all mutations need separate authorization.
 
 The independent offline source inspector is a separate research component that
 validates supplied synthetic evidence without opening source libraries or SQLite.

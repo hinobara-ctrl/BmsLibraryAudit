@@ -48,49 +48,8 @@ public static class PhaseThreeInspector
         var json = JsonSerializer.Serialize(inspection, new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower }).Replace("\r\n", "\n", StringComparison.Ordinal);
         var payload = new UTF8Encoding(false).GetBytes(json + "\n"); token.ThrowIfCancellationRequested();
         RequireRoot(ValidateOutput(chartPath, sourceRoot, outputDirectory), root);
-        Directory.CreateDirectory(outputDirectory); var parent = PhaseTwoSafety.Inspect(outputDirectory);
-        PathPolicy.RejectReparseAncestors(outputDirectory);
-        var report = Path.Combine(outputDirectory, "chart_inspection.json");
-        var temporary = Path.Combine(outputDirectory, ".chart_inspection." + Guid.NewGuid().ToString("N") + ".tmp");
-        NativePathFacts? ownedTemporary = null; var published = false;
-        try
-        {
-            RequireRoot(ValidateOutput(chartPath, sourceRoot, outputDirectory), root); RequireParent(outputDirectory, parent);
-            using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-            {
-                ownedTemporary = PhaseTwoSafety.Inspect(stream.SafeFileHandle, temporary);
-                RequireParent(outputDirectory, parent); RequireTemporaryPath(ownedTemporary, parent, temporary);
-                hooks?.AfterTemporaryCreated?.Invoke(); token.ThrowIfCancellationRequested();
-                RequireRoot(ValidateOutput(chartPath, sourceRoot, outputDirectory, temporary), root); RequireParent(outputDirectory, parent);
-                RequireTemporaryPath(PhaseTwoSafety.Inspect(stream.SafeFileHandle, temporary), parent, temporary);
-                // A bounded first chunk supplies a precise internal fault-injection
-                // point while the final filename remains absent.
-                var first = Math.Min(payload.Length / 2, 65536); stream.Write(payload.AsSpan(0, first)); stream.Flush();
-                hooks?.AfterFirstWrite?.Invoke(); token.ThrowIfCancellationRequested();
-                RequireRoot(ValidateOutput(chartPath, sourceRoot, outputDirectory, temporary), root); RequireParent(outputDirectory, parent);
-                RequireTemporaryPath(PhaseTwoSafety.Inspect(stream.SafeFileHandle, temporary), parent, temporary);
-                stream.Write(payload.AsSpan(first)); stream.Flush(flushToDisk: true);
-                ownedTemporary = PhaseTwoSafety.Inspect(stream.SafeFileHandle, temporary);
-                if (ownedTemporary.Size != payload.Length) throw new IOException("Incomplete staged report.");
-            }
-            var completedTemporary = PhaseTwoSafety.Inspect(temporary);
-            if (completedTemporary.Identity != ownedTemporary.Identity || completedTemporary.Size != payload.Length)
-                throw new IOException("Staged report changed after its write handle closed.");
-            ownedTemporary = completedTemporary;
-            hooks?.BeforePublish?.Invoke(); token.ThrowIfCancellationRequested();
-            RequireRoot(ValidateOutput(chartPath, sourceRoot, outputDirectory, temporary), root); RequireParent(outputDirectory, parent);
-            using (var staged = new FileStream(temporary, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete))
-            {
-                if (PhaseTwoSafety.Inspect(staged.SafeFileHandle, temporary) != ownedTemporary || PhaseTwoSafety.Inspect(temporary) != ownedTemporary)
-                    throw new IOException("Staged report identity/stamp changed before publication.");
-                RequireTemporaryPath(ownedTemporary, parent, temporary); token.ThrowIfCancellationRequested();
-                File.Move(temporary, report, overwrite: false); published = true;
-            }
-        }
-        finally
-        {
-            if (!published && ownedTemporary is not null) CleanupTemporary(chartPath, sourceRoot, outputDirectory, temporary, root, parent, ownedTemporary);
-        }
+        ObservedReportPublication.Publish(outputDirectory, "chart_inspection.json", payload,
+            (temporary, empty) => RequireRoot(ValidateOutput(chartPath, sourceRoot, outputDirectory, temporary, empty), root), token, hooks);
         return inspection;
     }
     private static NativePathFacts ValidateOutput(string chart, string sourceRoot, string output, string? temporary = null, bool requireEmpty = true)
@@ -112,30 +71,5 @@ public static class PhaseThreeInspector
     {
         if (current.Identity != expected.Identity || current.ResolvedPath != expected.ResolvedPath || current.Attributes != expected.Attributes)
             throw new IOException("Declared source root identity changed during inspection.");
-    }
-    private static void RequireParent(string path, NativePathFacts expected)
-    {
-        var current = PhaseTwoSafety.Inspect(path);
-        if (current.Identity != expected.Identity || current.ResolvedPath != expected.ResolvedPath || current.Attributes != expected.Attributes)
-            throw new IOException("Report parent identity changed during publication.");
-    }
-    private static void RequireTemporaryPath(NativePathFacts facts, NativePathFacts parent, string path)
-    {
-        if (facts.LinkCount != 1 || facts.ResolvedPath != parent.ResolvedPath + "\\" + Path.GetFileName(path).ToUpperInvariant())
-            throw new IOException("Unsafe temporary report binding.");
-    }
-    private static void CleanupTemporary(string chart, string rootPath, string output, string temporary, NativePathFacts root, NativePathFacts parent, NativePathFacts owned)
-    {
-        try
-        {
-            // Cleanup never follows a changed namespace or deletes a replacement
-            // file, pre-existing report, or any directory. A lost binding is left
-            // untouched for inspection rather than guessed/recovered.
-            RequireRoot(ValidateOutput(chart, rootPath, output, temporary, requireEmpty: false), root); RequireParent(output, parent);
-            if (!PhaseTwoSafety.Exists(temporary)) return;
-            var current = PhaseTwoSafety.Inspect(temporary); RequireTemporaryPath(current, parent, temporary);
-            if (current.Identity == owned.Identity) File.Delete(temporary);
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException) { }
     }
 }

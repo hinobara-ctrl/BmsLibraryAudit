@@ -7,13 +7,14 @@ return Run(args);
 static int Run(string[] args)
 {
     const string usage = """
-        BmsLibraryAudit: Phase 1 and synthetic-validated Phase 2A/2B/3 (Windows)
+        BmsLibraryAudit: Phase 1 and synthetic-validated Phase 2A/2B/3/4 (Windows)
         bms-audit scan --db <audit.db> --root <path> [--root <path> ...] [--rehash-all]
         bms-audit report --db <audit.db> --output <new-or-empty-directory>
         bms-audit phase2 preflight --source-db <audit.db> --source-scan <id> --db <phase2.db> --output <new-or-empty-directory> [--component <EXACT_ONLY-id> ...]
         bms-audit phase2 hash --db <phase2.db> --preflight <id> --accept-manifest <sha256> --output <new-or-empty-directory>
         bms-audit phase2 report --db <phase2.db> --session <id> --output <new-or-empty-directory>
         bms-audit phase3 inspect --chart <synthetic-chart> --source-root <protected-root> --output <new-or-empty-directory>
+        bms-audit phase4 resolve --db <phase2.db> --content-session <id> --accept-content-manifest <sha256> --chart-report <phase3.json> --observation-root <root-key> --output <new-or-empty-directory>
         CONTENT is explicit and requires an accepted completed PREFLIGHT. Real-library execution requires separate authorization.
         Outputs must be outside source libraries. Sources are only read.
         """;
@@ -25,6 +26,7 @@ static int Run(string[] args)
     {
         if (args[0] == "phase2") return RunPhaseTwo(args, cancellation.Token);
         if (args[0] == "phase3") return RunPhaseThree(args, cancellation.Token);
+        if (args[0] == "phase4") return RunPhaseFour(args, cancellation.Token);
         var command = args[0];
         if (command is not ("scan" or "report")) throw new ArgumentException($"Unknown command: {command}");
         string? db = null, output = null;
@@ -57,11 +59,31 @@ static int Run(string[] args)
         Console.WriteLine($"Reports: summary.json, duplicate_charts.csv, folder_candidates.csv, clusters.csv\nCandidate pairs: {analysis.Candidates.Count}; duplicate SHA-256 groups: {analysis.DuplicateGroups.Count}");
         return 0;
     }
-    catch (OperationCanceledException) { Console.Error.WriteLine(args[0] == "phase2" ? "Phase 2 operation cancelled; inspect the persisted session/export state." : args[0] == "phase3" ? "Phase 3 inspection cancelled; any partial export is not complete evidence." : "Scan cancelled; transaction rolled back."); return 130; }
-    catch (Exception exception) when (args[0] == "phase2" && exception is JsonException or FormatException or InvalidCastException or OverflowException)
-    { Console.Error.WriteLine($"Error: invalid Phase 2 input/evidence: {exception.Message}"); return 1; }
+    catch (OperationCanceledException) { Console.Error.WriteLine(args[0] == "phase2" ? "Phase 2 operation cancelled; inspect the persisted session/export state." : args[0] is "phase3" or "phase4" ? "Inspection/resolution cancelled; any partial export is not complete evidence." : "Scan cancelled; transaction rolled back."); return 130; }
+    catch (Exception exception) when (args[0] is "phase2" or "phase4" && exception is JsonException or FormatException or InvalidCastException or OverflowException)
+    { Console.Error.WriteLine($"Error: invalid {args[0]} input/evidence: {exception.Message}"); return 1; }
     catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or IOException or UnauthorizedAccessException or SqliteException)
     { Console.Error.WriteLine($"Error: {exception.Message}"); return 1; }
+}
+
+static int RunPhaseFour(string[] args, CancellationToken token)
+{
+    if (args.Length < 2 || args[1] != "resolve") throw new ArgumentException("phase4 requires resolve.");
+    var options = new Dictionary<string, string>(StringComparer.Ordinal);
+    for (var i = 2; i < args.Length; i++)
+    {
+        var key = args[i];
+        if (key is not ("--db" or "--content-session" or "--accept-content-manifest" or "--chart-report" or "--observation-root" or "--output") ||
+            ++i >= args.Length || args[i].StartsWith("--", StringComparison.Ordinal) || !options.TryAdd(key, args[i]))
+            throw new ArgumentException("Unknown, duplicate or missing Phase 4 option: " + key);
+    }
+    string Required(string key) => options.TryGetValue(key, out var value) ? value : throw new ArgumentException(key + " is required.");
+    if (!long.TryParse(Required("--content-session"), out var session) || session <= 0) throw new ArgumentException("Positive --content-session required.");
+    var result = PhaseFourResolver.Resolve(new(Required("--db"), session, Required("--accept-content-manifest"), Required("--chart-report"), Required("--observation-root"), Required("--output")), token: token);
+    Console.WriteLine(JsonSerializer.Serialize(new { result.ResultVersion, result.ResolutionCoverage, result.ConditionalCoverage,
+        Declarations = result.Declarations.Length, Usages = result.Usages.Length, result.DependencyClosureProven, result.RemovalAuthority,
+        Report = Path.Combine(PathPolicy.Absolute(Required("--output")), "dependency_resolution.json") }, new JsonSerializerOptions { WriteIndented = true }));
+    return result.ExitCode;
 }
 
 static int RunPhaseThree(string[] args, CancellationToken token)
