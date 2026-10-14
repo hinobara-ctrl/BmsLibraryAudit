@@ -1,7 +1,7 @@
 # BmsLibraryAudit — Current Roadmap
 
-**Planning revision:** 2026-10-14 (bounded Phase 4 conservative resolution).
-**Status:** Original roadmap committed in `63f5be6fdfbe05caeef37b8c2783f11473b0599e`; the implementation-first strategy was published in `f3d6bfb028be026bb088f620ad76d76b3256c9c2`, Phase 2B in `08d2e1c9eeb1344330698e3de5d9cb5873cf0bc7`, Phase 3/Phase 2 opening correction in `f5c02dedf5920f169d000fc1f9ba962de22cc6bd`, and Phase 3 corrective hardening in `e459e09fb703daec9a6ab6dfb597b23e322d7cf0`. The present bounded Phase 4 increment awaits independent review and authorized publication; full Phase 4 closure remains open.
+**Planning revision:** 2026-10-14 (Phase 4 final synthetic semantic closure).
+**Status:** Original roadmap committed in `63f5be6fdfbe05caeef37b8c2783f11473b0599e`; the implementation-first strategy was published in `f3d6bfb028be026bb088f620ad76d76b3256c9c2`, Phase 2B in `08d2e1c9eeb1344330698e3de5d9cb5873cf0bc7`, Phase 3/Phase 2 opening correction in `f5c02dedf5920f169d000fc1f9ba962de22cc6bd`, Phase 3 corrective hardening in `e459e09fb703daec9a6ab6dfb597b23e322d7cf0`, and the first Phase 4 increment with nested-RANDOM hardening in `45e2abfb6034cfadb70216e60ac4c49b3a98c385`. The present semantic graph/coverage increment awaits independent review and authorized publication. Its named synthetic scopes are bounded; universal Phase 4 dependency closure remains open.
 **Historical planning baseline (2026-10-12):** `hinobara-ctrl/BmsLibraryAudit@7bd460503a51a63e19cf85003893f75dadd6bb54` (`main`).
 **External comparison snapshot:** `Neeted/bemusicseeker-unofficial-fork@541db4fde12d1091ce0b7c939e11dd07d435b81c` (`dev`).
 
@@ -46,7 +46,7 @@ Implementation, verification and real-data access are separate permissions. Unre
 | Independent offline source inspector | Offline closure `READY_FOR_INDEPENDENT_REVIEW`; native observer and source-file inspection obligations open | Do not claim production/native coverage or use offline success as permission to access real source data. |
 | Phase 2B: accepted-manifest-bound payload hashing/comparison | Implemented with synthetic Windows validation; **no real-library execution authorized** | Explicit CONTENT command, fresh SHA-256 per required path, exact tree/multiset comparisons, immutable evidence and deterministic reports. New `PREFLIGHT_AND_CONTENT` / `phase2ab-content-1` profile; old profiles rejected unchanged without migration. Independent review remains required. |
 | Phase 3 BMS/BMSON syntactic resource extractor | Implemented with synthetic validation; explicit per-chart inspector | Mandatory declared source root, checked report publication and conservative title_image preservation. Retain byte/decoding evidence, declarations, potential usages, branches and uncertainty. No physical bindings or dependency closure. |
-| Phase 4 conservative resource resolution and conditional possibilities | Bounded synthetic increment implemented; full closure open | Explicit accepted CONTENT/root scope, independently reconstructed Phase 3 syntax, lexical observed candidates and named symbolic RANDOM/IF model. Unsupported lookup/control semantics remain unknown; no necessity or unused proof. |
+| Phase 4 conservative resource resolution and semantic dependency evidence | Named synthetic scopes implemented; universal closure open | Sealed CONTENT/chart join, lexical candidates, declaration/usage intersections, coexistence conflicts, usage-domain coverage witnesses, qualified fixed-value and explicit-SKIP SWITCH models, BMSON audio-search proposals and conservation obligations. Unknown player behavior blocks broader claims; no necessity/unused/removal proof. |
 | Phase 5 package classifier | Not implemented | Requires separate bounded authorization. |
 | Immutable merge plans, staging, publishing and cleanup | Not implemented; no source mutation authorized | Keep as long-term mandatory objectives, explicitly distinct from any current permission. |
 
@@ -101,7 +101,7 @@ flushed before no-overwrite publication in their validated destination. BMSON
 `title_image` is preserved with explicit IDL/prose uncertainty. These corrections
 have synthetic regressions and confer no real-operation or Phase 4 authority.
 
-### Phase 4 — Conditional reachability and exact resource resolution `[BOUNDED SYNTHETIC INCREMENT; CLOSURE OPEN]`
+### Phase 4 — Conditional reachability and exact resource resolution `[SYNTHETIC SCOPE CLOSED FOR REVIEW; UNIVERSAL CLOSURE OPEN]`
 
 Implemented `phase4 resolve`: read-only compiled-profile and CONTENT/PREFLIGHT seal
 verification, COMPLETE admitted component/root selection, included-byte SHA-256
@@ -114,6 +114,29 @@ branch model intersects symbolic predicates without combinatorial replay. Malfor
 unsupported controls and directly orphaned RANDOM content remain UNKNOWN; even
 model-impossible declarations remain recorded. See README for exact caps/states.
 
+The semantic extension adds joint declaration/usage predicates, usage-specific
+coexistence and unknown precedence, and bounded interval-box subtraction to prove
+coverage or expose unbound assignments. SETRANDOM uses an explicit fixed domain;
+flat SWITCH/SETSWITCH admits CASE/DEF only with SKIP between branches, final DEF
+and ENDSW. Fallthrough/nested SWITCH forms remain unsupported rather than modeled
+as ordinary if/else. BMSON sound-channel compatible-name proposals remain distinct
+from literal/BMS resolution, with codec usability unknown. JSON v2 retains v1
+field meanings and adds a versioned graph, catalog, conservation summary and
+coverage. The scoped observed-binding proof excludes playback, implicit resources,
+codec/fallback decisions, portability and package closure. Global dependency closure
+and removal authority remain false; no Phase 2 schema/seal or Phase 3 parser changes.
+
+The named synthetic scope now includes an explicit non-vacuity gate: a positive
+observed-binding proof requires at least one proven satisfiable usage, including
+fixed controller domains. Empty/all-impossible usage graphs receive NOT_PROVEN;
+impossible syntax, candidates and mathematical vacuous coverage remain retained.
+Mixed reachable/impossible usages can still prove the bounded scope. Unknown flow
+and exhausted relation/symbolic budgets cannot supply proof. Regression coverage
+includes the complete sealed synthetic Phase 1–4 path and a sanitized v1 JSON
+deserialization fixture, which is not valid sealed evidence. This closure is local
+and awaits independent review/publication; the
+published baseline remains `45e2abfb6034cfadb70216e60ac4c49b3a98c385`.
+
 The following remain completion/research goals, not current classifications:
 
 Explore **all relevant possible valid** `RANDOM/SETRANDOM/IF/ELSEIF/ELSE/ENDIF`, `SWITCH/SETSWITCH/CASE/DEF/SKIP/ENDSW` semantics rather than selecting one playback branch. Prefer bounded symbolic/reachability modeling; if branch explosion or uncertain semantics prevents proof, mark `UNKNOWN/UNSUPPORTED`, retain all potentially relevant resources and block unsafe fusion. Investigate duplicate/conflicting declarations, nested conditionals, legacy malformed files, case sensitivity, relative/parent/external paths, inherited/shared resources and simulator-specific lookup behavior.
@@ -125,6 +148,16 @@ Future proven semantics may classify `REQUIRED_ALWAYS`, `REQUIRED_CONDITIONAL`, 
 ### Phase 5 — Full package/family classification and candidate-scope expansion `[RESEARCH]`
 
 Combine Phase 1 relations, complete Phase 2 content evidence, and Phases 3–4 dependency graph; distinguish `PACKAGE_TREE_EXACT`, `CONTENT_MULTISET_EXACT`, `CHART_EXACT_RESOURCE_VARIANT`, `CHART_SUBSET`, `SAFE_UNION_CANDIDATE`, `HARD_CONFLICT`, `MISSING_RESOURCE`, `CONTAINER_DIRECTORY`, `UNKNOWN`, etc., as **independent dimensions** and proof statuses, not a single blanket safety label. Integrate nested folder/package boundaries without treating a large collection container as one song.
+
+The existing Phase 4 interface is prepared for future consumption, as documented
+in README: keep physical provenance/multiplicity, lexical resolution, chart
+semantics, non-vacuous bounded proof and operational authority independent.
+Preserve physical identities, playback alternatives, auxiliary files, path
+conflicts and every uncertainty/truncation. No Phase 5 reader/classifier, removal
+list or recoverable-space estimate is implemented by this closure. Remaining
+acceptance includes client precedence, unsupported SWITCH/fallthrough, codecs and
+search order, implicit dependencies, universal package closure, historical-evidence
+freshness, real-library operations and separately verified destructive safety.
 
 Expand beyond `EXACT_ONLY` into directed subsets, high overlap and resource-overlap **only via a new bounded/authorized observation and comparison contract**. External similarity/Jaccard suggestions may rank candidate work; they never certify equivalence.
 
@@ -167,7 +200,7 @@ Implement established solutions under bounded authorization. The questions below
 | Priority | Research question | Smallest useful proof or experiment | Depends on |
 | --- | --- | --- | --- |
 | **P0 — immediate safety/review** | Can Phase 2A's source-opening boundary and future pilot be accepted for their exact scopes? | WAL-header refusal and synthetic regressions are implemented; obtain independent reviewer disposition and applicable native/provenance/preservation evidence before separately authorized real discovery/pilot. | Existing Phase 2A contracts and distinct verification/real-access authorizations. |
-| **P1 — bounded increment review** | Which observed physical entries can an authored resource path refer to? | Review the implemented Phase 4 sealed-evidence join, explicit scope, lexical matches and retained ambiguity. Full simulator lookup, effective branch-sensitive declarations and dependency closure remain open. | Phase 2B/3/4 independent review; real execution and Phase 5 have their own gates. |
+| **P1 — semantic scope review** | Which conditional logical references have unique observed declaration bindings? | Review Phase 4 intersections, interval coverage proofs/witnesses, coexistence ambiguity, named fixed/SWITCH subsets and BMSON proposals. Player precedence, fallthrough, codec usability, implicit resources and universal closure remain open. | Phase 2B/3/4 independent review; real execution and Phase 5 have their own gates. |
 | **P2 — parallel offline research** | What are the **conservation** gaps of modern Neeted's parsers, resolver and collision policy? | Source-to-contract matrix at pinned commit; minimal self-created fixture suite: matching MD5, colliding resource name with same size/time but different bytes, conditional unused branch, resource-only folders. No source mutation outside disposable copies. | Public documentation/code only; provenance review. |
 | **P3 — conditional semantics** | Which syntactically observed `RANDOM/IF/SWITCH` alternatives are reachable? | Bounded Phase 4 conditional analysis over Phase 3 evidence; preserve all possibilities when semantics remain uncertain. | Tested Phase 3 syntax model; no real-library reads without approval. |
 | **P4 — resolver design** | When can two physical files with different paths substitute without breaking references? | File/path/encoding/simulator compatibility matrix; independent fixtures preserving chart bytes; include nested roots, external references and case collisions. | Phases 3–4. |

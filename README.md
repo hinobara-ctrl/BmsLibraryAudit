@@ -11,7 +11,7 @@ and priority research gaps; historical design remains in MASTER_CONTEXT.md.
 Development follows [the current master-context strategy](MASTER_CONTEXT.md#41-current-development-strategy--2026-10-14): implement sufficiently understood capabilities and research genuinely unresolved questions. Phase 2B compares exact folder contents, Phase 3 extracts resource syntax, and bounded Phase 4 joins verified syntax to sealed physical observations on synthetic inputs.
 
 Implemented scope: validated `PHASE_1.CHART_INDEX_AND_RELATIONSHIP_DISCOVERY`
-and `PHASE_2A.READ_ONLY_PREFLIGHT` / `PHASE_2B.EXACT_CONTENT_EVIDENCE` / Phase 3 syntactic inspection / `PHASE_4.CONSERVATIVE_DEPENDENCY_RESOLUTION` with synthetic validation on Windows. Phase 4 closure remains incomplete.
+and `PHASE_2A.READ_ONLY_PREFLIGHT` / `PHASE_2B.EXACT_CONTENT_EVIDENCE` / Phase 3 syntactic inspection / `PHASE_4.CONSERVATIVE_DEPENDENCY_RESOLUTION` with synthetic validation on Windows. Phase 4 now proves bounded logical-reference coverage; universal dependency closure remains unproved.
 Heuristics discover. Exact evidence proves. Verified plans mutate.
 
 `PHASE_1_STATUS: VALIDATED`. Phase 1 was validated against the real library;
@@ -259,7 +259,7 @@ are never opened to supplement it. Directory/input metadata for native destinati
 exclusion is still checked. A binding proves identity with a historical observation,
 not that the original chart remains identical today.
 
-`dependency_resolution.json` is deterministic UTF-8/LF and includes version/build
+`dependency_resolution.json` (`phase4-dependency-2`) is deterministic UTF-8/LF and includes version/build
 provenance, CONTENT/PREFLIGHT/component/root IDs and digests, historical observation
 times, verified syntax, declaration/usage relations, lexical bases, physical entry
 IDs, native identities, SHA-256, candidates, states, predicates and limitations.
@@ -293,13 +293,13 @@ and the documented [control-flow variants](https://hitkey.bms.ms/cmds.htm#CONTRO
 Those references also describe incompatible player behavior. `POSSIBLE_WITHIN_MODEL`
 and `IMPOSSIBLE_WITHIN_MODEL` are qualified conclusions only, with predicates and
 justification; **even impossible syntax and candidates remain in the report**.
-Direct content inside RANDOM without IF, malformed/unknown control evidence,
+The preserved v1 reachability fields keep their original model: direct content inside RANDOM without IF, malformed/unknown control evidence,
 SETRANDOM, SWITCH/SETSWITCH/CASE/DEF/SKIP and bounded-out conditions remain UNKNOWN.
 Every active RANDOM scope must have its own admitted IF-chain predicate, identified
 by that RANDOM's context ID. Predicates inherited from an outer scope or belonging
 to an inner scope do not cover an unguarded RANDOM; reachability stays UNKNOWN
 before any contradiction reduction, while observed physical candidates remain.
-Logical usage links are namespace/decoding-specific syntactic possibilities and
+The preserved `potential_usage_ids` links are namespace/decoding-specific syntactic possibilities and
 are not first/last-wins playback bindings; mutually exclusive pairs are retained.
 No REQUIRED_ALWAYS/REQUIRED_CONDITIONAL/DECLARED_UNUSED classification is asserted.
 Dependency closure and removal authority always remain false.
@@ -316,13 +316,117 @@ error. Existing Phase 2 seal/graph/comparison verification still has its documen
 scope-sized cost; this is not million-file or universal simulator acceptance.
 The owned 400-resource/200-declaration regression verifies indexed moderate input.
 
-Exit 0 means completed observed-path analysis and supported syntax within the
+The additional `semantics` object (`phase4-semantic-graph-1`) preserves the original
+fields and adds explicit declaration/usage edges, individual/joint predicates,
+physical-candidate catalog IDs, coexistence conflicts, coverage witnesses and
+conservation obligations. Relations use `MAY_BIND_WITHIN_MODEL`,
+`CANNOT_CO_OCCUR_WITHIN_MODEL`, `UNKNOWN_SEMANTICS` or
+`UNRESOLVED_LOGICAL_REFERENCE`; effective declarations distinguish single candidates,
+branch-exclusive alternatives and ambiguous coexistence. A global declaration
+plus conditional redefinition is recorded as a possible redefinition with unknown
+precedence. No first/last-wins rule is selected, including equal-byte duplicates.
+Textual before/after positions are reported without assuming application order;
+existing Phase 3 line/column/JSON-pointer evidence is sufficient and unchanged.
+
+Semantic analysis reuses the random predicates and evaluates a separate documented
+fixed-value model for SETRANDOM. Fixed controller domains are explicit, including
+uses outside the block. A small `random-fixed-flat-switch-explicit-skip-v1` model
+admits flat SWITCH/SETSWITCH sections with SKIP between branches, DEF last and
+mandatory ENDSW. SKIP suppresses later facts in that same section, whose syntax
+and candidates remain retained. Fallthrough, nested controls inside SWITCH,
+DEF-before-CASE and malformed structures remain UNKNOWN. The documented
+[control-flow differences](https://hitkey.bms.ms/cmds.htm) are not universal player
+semantics. Legacy v1 reachability remains unchanged; the new graph identifies its
+separate models. In graph predicates `random_context_id` identifies the controlling
+context row, including SWITCH in that specifically named model.
+
+Usage coverage subtracts finite interval-set declaration boxes from the usage
+region without enumerating values or products. An uncovered symbolic box is a
+checkable witness of unbound assignments. Separate pair/triple intersections
+detect declarations that coexist specifically at that usage. Enumeration, model
+coverage, effective precedence and observed physical bindings are separate fields.
+The bounded proof `observed-logical-dependency-evidence-1` can be
+`PROVEN_FOR_NAMED_OBSERVED_BINDING_SCOPE` only when admitted syntax has one decoding,
+at least one usage has a proven satisfiable region, all satisfiable usage assignments
+have unique declaration candidates in the named model and
+all authored paths have unique historical literal CONTENT bindings. Unknown
+syntax/models, holes, ambiguous precedence, limits or unobserved paths prevent
+that proof. Only `UNCONDITIONAL_SYNTAX` and `POSSIBLE_WITHIN_MODEL` establish a
+satisfiable usage region, using the existing predicates including fixed domains;
+`UNKNOWN` does not. Empty usage graphs and graphs with only impossible usages
+receive `NOT_PROVEN` with `NO_SATISFIABLE_USAGE_WITHIN_ADMITTED_MODEL`.
+`USAGE_IMPOSSIBLE_WITHIN_MODEL` and complete vacuous coverage remain mathematical
+facts, separate from positive binding proof. Impossible usages remain present and
+do not block a proof when another reachable usage is covered and all other gates pass.
+This scope expressly excludes
+playback, codecs/fallback, implicit dependencies, package closure and portability;
+`dependency_closure_proven` and `removal_authority` remain false in every result.
+
+BMSON 1.0.0 sound-channel lookup is separate from literal resolution and BMS rules.
+The [BMSON specification](https://github.com/bemusic/bmson-spec/blob/master/doc/index.rst#sound-channels)
+allows compatible-name search for omitted extensions and unusable/missing literal
+files. The graph retains observed same-stem entries within the selected inventory,
+even with a literal match because usability is not checked. WAV/OGG/M4A are marked
+as recommended-format potentials; other entries remain codec-compatibility UNKNOWN.
+No search order, decoder success, extension equivalence or physical selection is
+asserted. Notes retain pulse/length/continuation evidence without audio slicing.
+BGA/header relations remain distinct; title_image retains its normative uncertainty.
+
+Additional hard caps, reducible through the API: 100,000 semantic work units
+(edges/coexistence/triple checks), 100,000 semantic physical-candidate references
+and 100,000 semantic symbolic terms, also capped by the existing symbolic limit.
+Reaching any cap yields explicit incomplete coverage and no bounded proof; full
+verified input syntax and old declaration evidence remain present. JSON v2 keeps
+the v1 field meanings and adds `semantics` and these limits. Consumers must check
+`result_version`, tolerate the additive object, and consult semantic coverage rather
+than treating old `potential_usage_ids` as branch-compatible bindings.
+
+Exit 0 means completed observed-path analysis, semantic enumeration and supported syntax within the
 bounded model, **never full dependency closure**; a literal NO_OBSERVED_MATCH can
 still have exit 0. Exit 2 retains incomplete/ambiguous/unsupported syntax or links;
 1 refuses invalid evidence/destination or publication, and 130 means cancellation.
-Full player-specific lookup, branch-sensitive effective declaration semantics,
-required/unused proof and conservative dependency closure remain genuine Phase 4
-work. Phase 5, real-library execution and all mutations need separate authorization.
+The synthetic predicate/coverage scope is implemented and tested. Simulator-specific
+precedence, fallthrough models, codec usability, implicit dependencies and universal
+required/unused or dependency closure remain open and blocked. Real-data operational
+acceptance, Phase 5 and all mutations need separate authorization.
+
+The future Phase 5 consumer must keep five independent evidence levels:
+
+| Level | Existing result evidence | Meaning |
+| --- | --- | --- |
+| Physical provenance | `provenance`, declaration candidates, physical catalog | Accepted CONTENT/PREFLIGHT, component/root/chart SHA-256, entry identities and physical multiplicity. |
+| Lexical resolution | Declaration resolution/path policies and BMSON lookups | Observed match, policy-qualified no-match, Windows spelling and potential audio alternatives. |
+| Chart semantics | Verified syntax, relations, predicates, coexistences and usage coverage | Declarations/uses/contexts, compatibility, unselected precedence, reachability and symbolic witnesses. |
+| Bounded proof | Named models, `bounded_proof.state`, scope and blockers | Positive evidence requires a satisfiable usage; impossibility/uncertainty and limits remain explicit. |
+| Operational authority | Global flags and limitations | No demonstrated global closure, safe fusion or removal authority. |
+
+Consumption rules, applicable to the existing v2 interface without implementing Phase 5:
+
+1. `ExitCode == 0` is not proof that resources are complete.
+2. `OBSERVED_PATH_MATCH` does not prove effective resource use.
+3. `NO_OBSERVED_MATCH` does not prove absolute physical absence.
+4. `PROVEN_FOR_NAMED_OBSERVED_BINDING_SCOPE` is not universal closure.
+5. `IMPOSSIBLE_WITHIN_MODEL` is not impossibility in every simulator.
+6. `NO_CO_OCCURRING_USE_OBSERVED_WITHIN_MODEL` is not an unused-resource classification.
+7. Equal SHA-256 does not imply interchangeable paths or names.
+8. Historical observation does not establish current filesystem state.
+9. Consumers must preserve uncertainties, truncations and ambiguities.
+10. No Phase 4 result authorizes fusion or deletion.
+
+Future package comparison must evaluate each dimension independently and preserve
+physical identities, playback alternatives, auxiliary files and path conflicts.
+This increment provides no Phase 5 reader/classifier, recoverable-space calculation
+or deletion list. JSON stays `phase4-dependency-2` with the same fields; the proof
+restriction is expressed by its state/blockers. Legacy compatibility is tested
+with an explicitly sanitized deserialization-only fixture derived from an owned
+synthetic v1 smoke report in
+`tests/BmsLibraryAudit.Tests/Fixtures/phase4-v1-synthetic.json` (SHA-256
+`33f790fca0285be16ff7224cb2f24494cf753386cc6cc339708ae463ef921bb8`).
+All absolute paths use the neutral synthetic base `C:\BmsLibraryAuditSynthetic\phase4-v1`;
+native identities, observation timestamps and seal-related digests are synthetic
+placeholders. The modified fixture does not establish valid CONTENT/PREFLIGHT seals
+or physical provenance. The test checks v1 field deserialization, multiplicity and
+additive defaults only; it never opens those paths or invokes a seal verifier.
 
 The independent offline source inspector is a separate research component that
 validates supplied synthetic evidence without opening source libraries or SQLite.

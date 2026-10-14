@@ -11,7 +11,7 @@ namespace BmsLibraryAudit.Tests;
 
 public sealed class PhaseFourTests
 {
-    private sealed class Evidence : IDisposable
+    internal sealed class Evidence : IDisposable
     {
         internal Fixture F { get; } = new();
         internal string Chart => F.Path("A", "one.BMS");

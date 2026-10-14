@@ -82,6 +82,9 @@ static int RunPhaseFour(string[] args, CancellationToken token)
     var result = PhaseFourResolver.Resolve(new(Required("--db"), session, Required("--accept-content-manifest"), Required("--chart-report"), Required("--observation-root"), Required("--output")), token: token);
     Console.WriteLine(JsonSerializer.Serialize(new { result.ResultVersion, result.ResolutionCoverage, result.ConditionalCoverage,
         Declarations = result.Declarations.Length, Usages = result.Usages.Length, result.DependencyClosureProven, result.RemovalAuthority,
+        SemanticRelationCoverage = result.Semantics?.RelationEnumerationCoverage,
+        SemanticModelCoverage = result.Semantics?.ConditionalModelCoverage,
+        BoundedDependencyEvidence = result.Semantics?.BoundedProof.State,
         Report = Path.Combine(PathPolicy.Absolute(Required("--output")), "dependency_resolution.json") }, new JsonSerializerOptions { WriteIndented = true }));
     return result.ExitCode;
 }

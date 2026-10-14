@@ -139,14 +139,16 @@ public static class PhaseFourResolver
             options.ObservationRootKey, rootPath, capturedRoot, Path.GetDirectoryName((string)chartRow[3]!)!, null, Candidate(chartRow, rootId, componentId), verified.Sha256!,
             (string)db.Scalar("SELECT started_utc FROM sessions WHERE session_id=$0", options.ContentSessionId)!,
             (string)db.Scalar("SELECT completed_utc FROM sessions WHERE session_id=$0", options.ContentSessionId)!, ReportWriter.ToolVersion, PhaseTwoBuildProvenance.Current.EvidenceRevision);
-        var result = new PhaseFourResult("phase4-conservative-1", provenance, verified, resolutions.ToArray(), usages,
+        var resolved = resolutions.ToArray();
+        var semantics = PhaseFourSemantics.Analyze(verified, resolved, paths, limits, token);
+        var result = new PhaseFourResult("phase4-dependency-2", provenance, verified, resolved, usages,
             diagnostics.Count != 0 || resolutions.Any(r => r.ResolutionState is "UNKNOWN" or "UNSUPPORTED_RESOLUTION" or "AMBIGUOUS_PATH_MATCH") ? "INCOMPLETE" : "COMPLETE_OBSERVED_PATH_ANALYSIS",
             conditions.Complete && resolutions.All(r => r.Reachability.State != "UNKNOWN") && usages.All(u => u.Reachability.State != "UNKNOWN") ? "COMPLETE_BOUNDED_MODEL" : "INCOMPLETE",
             diagnostics.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray(),
             ["No package-root inference, external lookup, extension substitution, resource opening or hash-based name substitution.",
              "Phase 3 library-root native facts are unsigned hints; sealed library path membership and chart native identity/stamps/bytes are checked independently.",
              "Duplicate logical declarations and all decoding/conditional alternatives remain potential obligations; no first/last-wins or required/unused classification.",
-             "Physical and semantic claims refer to a historical observation window, not a current immutable snapshot."], false, false, limits, Notice);
+             "Physical and semantic claims refer to a historical observation window, not a current immutable snapshot."], false, false, limits, Notice, semantics);
         var json = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(result, Json).Replace("\r\n", "\n", StringComparison.Ordinal) + "\n");
         if (json.Length > limits.MaximumReportBytes) throw new InvalidOperationException("INCOMPLETE_REPORT_LIMIT: bounded result cannot be published; no complete report created.");
         void Validate(string? temporary, bool empty)
@@ -189,7 +191,10 @@ public static class PhaseFourResolver
             limits.MaximumCandidatesPerReference is < 1 || limits.MaximumCandidatesPerReference > upper.MaximumCandidatesPerReference ||
             limits.MaximumCandidateLinks is < 1 || limits.MaximumCandidateLinks > upper.MaximumCandidateLinks ||
             limits.MaximumConditionalDepth is < 1 || limits.MaximumConditionalDepth > upper.MaximumConditionalDepth ||
-            limits.MaximumSymbolicTerms is < 1 || limits.MaximumSymbolicTerms > upper.MaximumSymbolicTerms) throw new ArgumentException("Phase 4 limits must be positive and may only reduce documented hard limits.");
+            limits.MaximumSymbolicTerms is < 1 || limits.MaximumSymbolicTerms > upper.MaximumSymbolicTerms ||
+            limits.MaximumSemanticRelations is < 1 || limits.MaximumSemanticRelations > upper.MaximumSemanticRelations ||
+            limits.MaximumSemanticCandidateLinks is < 1 || limits.MaximumSemanticCandidateLinks > upper.MaximumSemanticCandidateLinks ||
+            limits.MaximumSemanticSymbolicTerms is < 1 || limits.MaximumSemanticSymbolicTerms > upper.MaximumSemanticSymbolicTerms) throw new ArgumentException("Phase 4 limits must be positive and may only reduce documented hard limits.");
     }
     private sealed class Destination
     {

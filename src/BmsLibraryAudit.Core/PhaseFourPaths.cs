@@ -9,6 +9,8 @@ internal sealed class PhaseFourPaths
     private readonly Dictionary<string, ObservedResourceCandidate[]> stems;
     private readonly PhaseFourLimits limits;
     private int links;
+    private int audioLinks;
+    internal bool AudioLimited { get; private set; }
     internal bool Limited { get; private set; }
     internal PhaseFourPaths(IEnumerable<ObservedResourceCandidate> inventory, PhaseFourLimits limits)
     {
@@ -68,5 +70,20 @@ internal sealed class PhaseFourPaths
         if (retained.Length != candidates.Length)
         { Limited = true; state = "UNKNOWN"; limitations = [.. limitations, "CANDIDATE_LIMIT: alternatives omitted from links; no unique binding asserted."]; }
         return new(relative, policy, state, retained, limitations);
+    }
+    internal BmsonAudioLookup BmsonAudioSearch(int declarationId, string? relative, string literalState)
+    {
+        const string policy = "bmson-1.0-sound-channel-compatible-name-search-v1";
+        if (relative is null) return new(declarationId, policy, "UNKNOWN_SCOPE", "No admitted lexical relative path", [], false, "No authored path is opened.");
+        var alternatives = stems.GetValueOrDefault(Stem(relative)) ?? [];
+        var available = Math.Max(0, Math.Min(limits.MaximumCandidatesPerReference, limits.MaximumCandidateLinks - audioLinks));
+        var retained = alternatives.Take(available).Select(c => c with {
+            MatchPolicy = new[] { ".wav", ".ogg", ".m4a" }.Contains(Path.GetExtension(c.RelativePath), StringComparer.OrdinalIgnoreCase)
+                ? "BMSON_RECOMMENDED_FORMAT_SEARCH_POTENTIAL" : "BMSON_SAME_STEM_CODEC_COMPATIBILITY_UNKNOWN" }).ToArray();
+        audioLinks += retained.Length;
+        var state = alternatives.Length == 0 ? "NO_OBSERVED_SEARCH_CANDIDATES" : "POTENTIAL_OBSERVED_AUDIO_SEARCH_CANDIDATES";
+        if (retained.Length != alternatives.Length) { AudioLimited = true; state = "INCOMPLETE_CANDIDATE_LIMIT"; }
+        return new(declarationId, policy, state, literalState == "OBSERVED_PATH_MATCH" ? "If literal file cannot be played; playability is not checked" : "Omitted extension or no usable literal file", retained, false,
+            "BMSON 1.0.0 documents compatible-name search, without a universal codec set/order. All observed same-stem entries are retained; WAV/OGG/M4A are recommendations, other codecs are unknown. No payloads are opened, format equivalence or selection asserted.");
     }
 }

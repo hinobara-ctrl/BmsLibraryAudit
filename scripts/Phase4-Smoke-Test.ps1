@@ -16,9 +16,16 @@ foreach ($taskFolder in @('A','B')) {
     New-Item -ItemType Directory -Path $taskDirectory -Force | Out-Null
     [IO.File]::WriteAllText((Join-Path $taskDirectory 'one.bms'), "#WAV01 kick.wav`n#WAV02 copy.wav`n#BMP01 image.png`n#WAV03 absent.wav`n#00111:0102`n#00104:01", $taskUtf8)
     [IO.File]::WriteAllText((Join-Path $taskDirectory 'conditional.bms'), "#RANDOM 2`n#IF 1`n#WAV01 kick.wav`n#ELSEIF 2`n#WAV01 copy.wav`n#ELSE`n#WAV01 impossible.wav`n#ENDIF`n#ENDRANDOM`n#00111:01", $taskUtf8)
+    [IO.File]::WriteAllText((Join-Path $taskDirectory 'duplicate.bms'), "#WAV01 kick.wav`n#WAV01 copy.wav`n#00111:01", $taskUtf8)
+    [IO.File]::WriteAllText((Join-Path $taskDirectory 'fixed.bms'), "#SETRANDOM 2`n#IF 1`n#WAV01 kick.wav`n#ENDIF`n#IF 2`n#WAV01 copy.wav`n#ENDIF`n#ENDRANDOM`n#00111:01", $taskUtf8)
+    [IO.File]::WriteAllText((Join-Path $taskDirectory 'switch.bms'), "#SWITCH 2`n#CASE 1`n#WAV01 kick.wav`n#SKIP`n#DEF`n#WAV01 copy.wav`n#ENDSW`n#00111:01", $taskUtf8)
+    [IO.File]::WriteAllText((Join-Path $taskDirectory 'impossible.bms'), "#WAV01 kick.wav`n#RANDOM 2`n#IF 3`n#00111:01`n#ENDIF`n#ENDRANDOM", $taskUtf8)
+    [IO.File]::WriteAllText((Join-Path $taskDirectory 'audio.bmson'), '{"version":"1.0.0","sound_channels":[{"name":"stem","notes":[{"x":1,"y":0,"l":0,"c":false}]}]}', $taskUtf8)
     [IO.File]::WriteAllText((Join-Path $taskDirectory 'kick.wav'), "known audio $taskFolder", $taskUtf8)
     [IO.File]::WriteAllText((Join-Path $taskDirectory 'copy.wav'), "known audio $taskFolder", $taskUtf8)
     [IO.File]::WriteAllText((Join-Path $taskDirectory 'image.png'), 'known image', $taskUtf8)
+    [IO.File]::WriteAllText((Join-Path $taskDirectory 'stem.ogg'), 'opaque candidate ogg', $taskUtf8)
+    [IO.File]::WriteAllText((Join-Path $taskDirectory 'stem.m4a'), 'opaque candidate m4a', $taskUtf8)
 }
 function Invoke-TaskCli([int]$Expected, [string[]]$Arguments) {
     $taskText = & $DotNet $taskCli @Arguments
@@ -46,6 +53,7 @@ $taskOutput = Join-Path $taskBase 'resolved'
 $taskResult = Invoke-TaskCli 0 ($taskArguments + @('--output',$taskOutput))
 $taskResolution = Get-Content -LiteralPath $taskResult.Report -Raw | ConvertFrom-Json
 if ($taskResolution.dependency_closure_proven -or $taskResolution.removal_authority -or $taskResolution.provenance.content_digest -ne $taskContent.ManifestSha256) { throw 'Incorrect authority/provenance.' }
+if ($taskResolution.result_version -ne 'phase4-dependency-2' -or $taskResolution.semantics.relation_enumeration_coverage -ne 'COMPLETE' -or $taskResolution.semantics.bounded_proof.state -ne 'NOT_PROVEN') { throw 'Semantic graph or bounded proof promoted absent resource to closure.' }
 $taskExpectedSha = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($taskUtf8.GetBytes('known audio A'))).ToLowerInvariant()
 if ($taskResolution.declarations[0].resolution_state -ne 'OBSERVED_PATH_MATCH' -or $taskResolution.declarations[0].candidates[0].sha256 -ne $taskExpectedSha) { throw 'WAV path/hash differs from independent fixture expectation.' }
 if ($taskResolution.declarations[1].candidates[0].sha256 -ne $taskExpectedSha -or $taskResolution.declarations[1].candidates[0].physical_file_id -eq $taskResolution.declarations[0].candidates[0].physical_file_id) { throw 'Multiplicity or same bytes/different name lost.' }
@@ -64,6 +72,33 @@ $null = Invoke-TaskCli 2 @('phase3','inspect','--chart',(Join-Path $taskRoot 'A\
 $taskConditional = Invoke-TaskCli 2 @('phase4','resolve','--db',$taskDb,'--content-session',"$($taskContent.SessionId)",'--accept-content-manifest',$taskContent.ManifestSha256,'--chart-report',(Join-Path $taskConditionalSyntax 'chart_inspection.json'),'--observation-root',$taskRootKey,'--output',(Join-Path $taskBase 'conditional'))
 $taskBranches = (Get-Content -LiteralPath $taskConditional.Report -Raw | ConvertFrom-Json).declarations
 if (@($taskBranches).Count -ne 3 -or $taskBranches[2].reachability.state -ne 'IMPOSSIBLE_WITHIN_MODEL') { throw 'Conditional alternatives or bounded justification lost.' }
+$taskGraph = (Get-Content -LiteralPath $taskConditional.Report -Raw | ConvertFrom-Json).semantics
+if (@($taskGraph.relations).Count -ne 3 -or $taskGraph.usage_evidence[0].effective_declaration_state -ne 'BRANCH_EXCLUSIVE_ALTERNATIVES_WITHIN_MODEL' -or $taskGraph.usage_evidence[0].declaration_coverage -ne 'DECLARATIONS_COVER_USAGE_WITHIN_MODEL') { throw 'Conditional bindings or coverage proof differ.' }
+if (@($taskGraph.conservation_obligations).Count -ne 3 -or @($taskGraph.relations | Where-Object compatibility -eq 'CANNOT_CO_OCCUR_WITHIN_MODEL').Count -ne 1) { throw 'Impossible syntax or obligations lost.' }
+foreach ($taskExtra in @(@('duplicate.bms','duplicate',2,'AMBIGUOUS_EFFECTIVE_DECLARATION'), @('fixed.bms','fixed',2,'SINGLE_CANDIDATE_WITHIN_MODEL'), @('switch.bms','switch',2,'BRANCH_EXCLUSIVE_ALTERNATIVES_WITHIN_MODEL'), @('impossible.bms','impossible',2,'NO_COMPATIBLE_DECLARATION_WITHIN_MODEL'), @('audio.bmson','audio',0,'SINGLE_CANDIDATE_WITHIN_MODEL'))) {
+    $taskExtraSyntax = Join-Path $taskBase ($taskExtra[1] + '-syntax')
+    $null = Invoke-TaskCli $taskExtra[2] @('phase3','inspect','--chart',(Join-Path $taskRoot ('A\' + $taskExtra[0])),'--source-root',$taskRoot,'--output',$taskExtraSyntax)
+    $taskExtraResult = Invoke-TaskCli 2 @('phase4','resolve','--db',$taskDb,'--content-session',"$($taskContent.SessionId)",'--accept-content-manifest',$taskContent.ManifestSha256,'--chart-report',(Join-Path $taskExtraSyntax 'chart_inspection.json'),'--observation-root',$taskRootKey,'--output',(Join-Path $taskBase $taskExtra[1]))
+    $taskExtraReport = Get-Content -LiteralPath $taskExtraResult.Report -Raw | ConvertFrom-Json
+    $taskExtraGraph = $taskExtraReport.semantics
+    if ($taskExtraGraph.usage_evidence[0].effective_declaration_state -ne $taskExtra[3] -or $taskExtraReport.removal_authority -or $taskExtraReport.dependency_closure_proven) { throw 'Extra semantic fixture differs or grants authority.' }
+    if ($taskExtra[1] -eq 'duplicate' -and ($taskExtraGraph.bounded_proof.state -ne 'NOT_PROVEN' -or @($taskExtraGraph.conservation_obligations).Count -ne 2)) { throw 'Duplicate precedence chosen or obligation lost.' }
+    if ($taskExtra[1] -eq 'fixed' -and $taskExtraGraph.bounded_proof.state -ne 'PROVEN_FOR_NAMED_OBSERVED_BINDING_SCOPE') { throw 'Fixed-value domain not proved for the scoped usage.' }
+    if ($taskExtra[1] -eq 'switch' -and $taskExtraGraph.bounded_proof.state -ne 'PROVEN_FOR_NAMED_OBSERVED_BINDING_SCOPE') { throw 'Explicit-SKIP SWITCH scope not proved.' }
+    if ($taskExtra[1] -eq 'impossible') {
+        if ($taskExtraGraph.bounded_proof.state -ne 'NOT_PROVEN' -or 'NO_SATISFIABLE_USAGE_WITHIN_ADMITTED_MODEL' -notin $taskExtraGraph.bounded_proof.blockers -or $taskExtraGraph.usage_evidence[0].declaration_coverage -ne 'USAGE_IMPOSSIBLE_WITHIN_MODEL') { throw 'Vacuous usage coverage promoted to positive binding proof.' }
+        if (@($taskExtraGraph.relations).Count -ne 1 -or $taskExtraGraph.relations[0].usage_condition.state -ne 'IMPOSSIBLE_WITHIN_MODEL' -or @($taskExtraGraph.conservation_obligations).Count -ne 1 -or $taskExtraReport.declarations[0].resolution_state -ne 'OBSERVED_PATH_MATCH' -or $taskExtraReport.declarations[0].candidates[0].sha256 -ne $taskExpectedSha) { throw 'Impossible usage or observed physical obligation lost.' }
+    }
+    if ($taskExtra[1] -eq 'audio') {
+        $taskLookup = $taskExtraGraph.bmson_audio_lookups[0]
+        if (@($taskLookup.candidates).Count -ne 2 -or $taskLookup.codec_compatibility_proven -or $taskExtraGraph.bounded_proof.state -ne 'NOT_PROVEN') { throw 'Audio search candidates selected or usability invented.' }
+        foreach ($taskCandidate in $taskLookup.candidates) {
+            $taskPayload = if ($taskCandidate.relative_path -eq 'stem.ogg') { 'opaque candidate ogg' } elseif ($taskCandidate.relative_path -eq 'stem.m4a') { 'opaque candidate m4a' } else { throw 'Unexpected audio search member.' }
+            $taskKnown = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($taskUtf8.GetBytes($taskPayload))).ToLowerInvariant()
+            if ($taskCandidate.sha256 -ne $taskKnown) { throw 'Audio candidate digest differs from independent fixture bytes.' }
+        }
+    }
+}
 $taskBadOutput = Join-Path $taskBase 'bad-acceptance'
 $taskBad = & $DotNet $taskCli phase4 resolve --db $taskDb --content-session $taskContent.SessionId --accept-content-manifest ('0' * 64) --chart-report $taskReport --observation-root $taskRootKey --output $taskBadOutput 2>&1
 if ($LASTEXITCODE -ne 1 -or (Test-Path -LiteralPath $taskBadOutput)) { throw 'Wrong accepted CONTENT digest not refused.' }

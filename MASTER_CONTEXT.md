@@ -1481,3 +1481,36 @@ is preserved. Observed matches are historical, no-match is not absolute absence,
 and same hashes do not authorize name substitution or removal. Dependency closure
 and removal authority remain false. Full Phase 4 closure, Phase 5, real execution
 and any mutation require further evidence and separate applicable authorization.
+
+# 46. Phase 4 semantic evidence scopes — 2026-10-14
+
+Declaration/usage relationships are now evaluated by logical namespace, ID and
+decoding with joint predicates. Alternatives, compatible duplicates and possible
+redefinitions remain distinct; textual order is not simulator precedence. Bounded
+interval-set subtraction proves usage-domain coverage or records unbound symbolic
+assignments, without enumerating random reproductions. Separate named models admit
+fixed SETRANDOM and flat explicitly skipped SWITCH/SETSWITCH; unsupported flow stays
+unknown. BMSON sound-channel compatible-name search retains observed proposals,
+with no codec usability, format equivalence or search-order proof.
+
+The versioned graph preserves all source syntax and potential obligations. Its
+scoped observed-binding proof concerns parser-admitted logical usage assignments
+and historical literal CONTENT bindings, excluding implicit resources, playback,
+fallback/codecs, portability and package closure. It is separate from syntax,
+enumeration, physical observation and effective-precedence coverage. Global
+dependency closure and removal authority remain false. No real-data acceptance,
+Phase 5, source mutation, schema migration or evidence resealing follows from it.
+
+# 47. Non-vacuous bounded binding evidence — 2026-10-14
+
+A positive named observed-binding proof requires at least one usage with a proven
+satisfiable region in the admitted predicate model, including fixed controller
+domains. Empty or entirely impossible usage graphs cannot supply positive binding
+evidence. UNKNOWN does not establish satisfiability; limits still block proof.
+Mathematical vacuous coverage and model-impossible facts remain valid reported
+states, with all declarations, usages and physical candidates retained. Covered
+reachable usages can prove the bounded scope despite other impossible usages.
+Physical observation, lexical matching, semantic coverage, bounded proof and
+operational authority are independent dimensions for future consumers. Historical
+bindings grant no global closure, safe fusion or removal authority; the local
+synthetic closure does not implement Phase 5 or establish real-data acceptance.

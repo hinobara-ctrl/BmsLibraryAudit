@@ -1,0 +1,418 @@
+{
+  "result_version": "phase4-conservative-1",
+  "provenance": {
+    "content_session_id": 2,
+    "content_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+    "parent_preflight_id": 1,
+    "preflight_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "component_id": 1,
+    "component_key": "3333333333333333333333333333333333333333333333333333333333333333",
+    "observation_root_id": 1,
+    "observation_root_key": "C:\\BMSLIBRARYAUDITSYNTHETIC\\PHASE4-V1\\LIBRARY\\A",
+    "observation_root_path": "C:\\BmsLibraryAuditSynthetic\\phase4-v1\\library\\A",
+    "source_library_root": "C:\\BmsLibraryAuditSynthetic\\phase4-v1\\library",
+    "chart_parent": "C:\\BmsLibraryAuditSynthetic\\phase4-v1\\library\\A",
+    "package_root": null,
+    "chart": {
+      "entry_id": 6,
+      "physical_file_id": 5,
+      "observation_root_id": 1,
+      "component_id": 1,
+      "entry_key": "C:\\BMSLIBRARYAUDITSYNTHETIC\\PHASE4-V1\\LIBRARY\\A\\ONE.BMS",
+      "original_path": "C:\\BmsLibraryAuditSynthetic\\phase4-v1\\library\\A\\one.bms",
+      "relative_path": "one.bms",
+      "native_identity": "00000000:0000000000000001",
+      "sha256": "60ec781fe42cfa00d021193563c27fcdc3b5305ef9bbe60c9807fb206aa6152d",
+      "size": 88,
+      "match_policy": "SEALED_MEMBERSHIP"
+    },
+    "chart_sha256": "60ec781fe42cfa00d021193563c27fcdc3b5305ef9bbe60c9807fb206aa6152d",
+    "content_started_utc": "2000-01-01T00:00:00.0000000\u002B00:00",
+    "content_completed_utc": "2000-01-01T00:00:01.0000000\u002B00:00",
+    "tool_version": "0.1.0",
+    "resolver_build_revision": "UNKNOWN_DIRTY"
+  },
+  "verified_syntax": {
+    "format": "BMS",
+    "format_versions": [],
+    "byte_length": 88,
+    "sha256": "60ec781fe42cfa00d021193563c27fcdc3b5305ef9bbe60c9807fb206aa6152d",
+    "original_bytes": "I1dBVjAxIGtpY2sud2F2CiNXQVYwMiBjb3B5LndhdgojQk1QMDEgaW1hZ2UucG5nCiNXQVYwMyBhYnNlbnQud2F2CiMwMDExMTowMTAyCiMwMDEwNDowMQ==",
+    "decodings": [
+      {
+        "id": 0,
+        "encoding": "UTF-8",
+        "policy": "Strict UTF-8 candidate; successful decoding does not prove author intent",
+        "state": "OBSERVED",
+        "text": "#WAV01 kick.wav\n#WAV02 copy.wav\n#BMP01 image.png\n#WAV03 absent.wav\n#00111:0102\n#00104:01"
+      }
+    ],
+    "declarations": [
+      {
+        "id": 0,
+        "namespace": "WAV",
+        "logical_id": "01",
+        "resource_kind": "AUDIO",
+        "written_path": "kick.wav",
+        "raw_value": "kick.wav",
+        "state": "OBSERVED",
+        "conditional_context_ids": [],
+        "source": {
+          "decoding_id": 0,
+          "line": 1,
+          "column": 1,
+          "json_pointer": null,
+          "raw_text": "#WAV01 kick.wav"
+        }
+      },
+      {
+        "id": 1,
+        "namespace": "WAV",
+        "logical_id": "02",
+        "resource_kind": "AUDIO",
+        "written_path": "copy.wav",
+        "raw_value": "copy.wav",
+        "state": "OBSERVED",
+        "conditional_context_ids": [],
+        "source": {
+          "decoding_id": 0,
+          "line": 2,
+          "column": 1,
+          "json_pointer": null,
+          "raw_text": "#WAV02 copy.wav"
+        }
+      },
+      {
+        "id": 2,
+        "namespace": "BMP",
+        "logical_id": "01",
+        "resource_kind": "VISUAL",
+        "written_path": "image.png",
+        "raw_value": "image.png",
+        "state": "OBSERVED",
+        "conditional_context_ids": [],
+        "source": {
+          "decoding_id": 0,
+          "line": 3,
+          "column": 1,
+          "json_pointer": null,
+          "raw_text": "#BMP01 image.png"
+        }
+      },
+      {
+        "id": 3,
+        "namespace": "WAV",
+        "logical_id": "03",
+        "resource_kind": "AUDIO",
+        "written_path": "absent.wav",
+        "raw_value": "absent.wav",
+        "state": "OBSERVED",
+        "conditional_context_ids": [],
+        "source": {
+          "decoding_id": 0,
+          "line": 4,
+          "column": 1,
+          "json_pointer": null,
+          "raw_text": "#WAV03 absent.wav"
+        }
+      }
+    ],
+    "logical_resources": [
+      {
+        "id": 0,
+        "decoding_id": 0,
+        "namespace": "WAV",
+        "logical_id": "01",
+        "declaration_ids": [
+          0
+        ]
+      },
+      {
+        "id": 1,
+        "decoding_id": 0,
+        "namespace": "WAV",
+        "logical_id": "02",
+        "declaration_ids": [
+          1
+        ]
+      },
+      {
+        "id": 2,
+        "decoding_id": 0,
+        "namespace": "BMP",
+        "logical_id": "01",
+        "declaration_ids": [
+          2
+        ]
+      },
+      {
+        "id": 3,
+        "decoding_id": 0,
+        "namespace": "WAV",
+        "logical_id": "03",
+        "declaration_ids": [
+          3
+        ]
+      }
+    ],
+    "usages": [
+      {
+        "id": 0,
+        "namespace": "WAV",
+        "logical_id": "01",
+        "kind": "PLAYABLE_EVENT",
+        "state": "POTENTIAL",
+        "logical_resource_id": 0,
+        "conditional_context_ids": [],
+        "source": {
+          "decoding_id": 0,
+          "line": 5,
+          "column": 8,
+          "json_pointer": null,
+          "raw_text": "01"
+        },
+        "lane_json": null,
+        "pulse": null,
+        "length": null,
+        "continuation": null
+      },
+      {
+        "id": 1,
+        "namespace": "WAV",
+        "logical_id": "02",
+        "kind": "PLAYABLE_EVENT",
+        "state": "POTENTIAL",
+        "logical_resource_id": 1,
+        "conditional_context_ids": [],
+        "source": {
+          "decoding_id": 0,
+          "line": 5,
+          "column": 10,
+          "json_pointer": null,
+          "raw_text": "02"
+        },
+        "lane_json": null,
+        "pulse": null,
+        "length": null,
+        "continuation": null
+      },
+      {
+        "id": 2,
+        "namespace": "BMP",
+        "logical_id": "01",
+        "kind": "BGA_04",
+        "state": "POTENTIAL",
+        "logical_resource_id": 2,
+        "conditional_context_ids": [],
+        "source": {
+          "decoding_id": 0,
+          "line": 6,
+          "column": 8,
+          "json_pointer": null,
+          "raw_text": "01"
+        },
+        "lane_json": null,
+        "pulse": null,
+        "length": null,
+        "continuation": null
+      }
+    ],
+    "conditional_contexts": [],
+    "unknown_evidence": [],
+    "diagnostics": [],
+    "syntax_coverage": "COMPLETE_SUPPORTED_SYNTAX",
+    "dependency_closure_proven": false,
+    "limits": {
+      "maximum_bytes": 8388608,
+      "maximum_line_characters": 65536,
+      "maximum_facts": 50000,
+      "maximum_conditional_depth": 64,
+      "maximum_json_depth": 64
+    },
+    "exit_code": 0
+  },
+  "declarations": [
+    {
+      "declaration_id": 0,
+      "written_path": "kick.wav",
+      "relative_base": "",
+      "candidate_relative_path": "kick.wav",
+      "path_policy": "LEXICAL_ORDINAL",
+      "resolution_state": "OBSERVED_PATH_MATCH",
+      "semantic_state": "POTENTIAL_USE_RELATION",
+      "reachability": {
+        "state": "UNCONDITIONAL_SYNTAX",
+        "model": "nested-random-first-matching-branch-v1",
+        "constraints": [],
+        "justification": "No supported conditional predicate surrounds this syntax; necessity is not inferred."
+      },
+      "potential_usage_ids": [
+        0
+      ],
+      "candidates": [
+        {
+          "entry_id": 5,
+          "physical_file_id": 4,
+          "observation_root_id": 1,
+          "component_id": 1,
+          "entry_key": "C:\\BMSLIBRARYAUDITSYNTHETIC\\PHASE4-V1\\LIBRARY\\A\\KICK.WAV",
+          "original_path": "C:\\BmsLibraryAuditSynthetic\\phase4-v1\\library\\A\\kick.wav",
+          "relative_path": "kick.wav",
+          "native_identity": "00000000:0000000000000002",
+          "sha256": "552c6a29878edc1c91ab7d244f09194df91df1a614e04874e667c92058ff852e",
+          "size": 13,
+          "match_policy": "LEXICAL_ORDINAL"
+        }
+      ],
+      "limitations": [
+        "Historical inventory correspondence only; simulator lookup/necessity and current filesystem state remain unproved."
+      ]
+    },
+    {
+      "declaration_id": 1,
+      "written_path": "copy.wav",
+      "relative_base": "",
+      "candidate_relative_path": "copy.wav",
+      "path_policy": "LEXICAL_ORDINAL",
+      "resolution_state": "OBSERVED_PATH_MATCH",
+      "semantic_state": "POTENTIAL_USE_RELATION",
+      "reachability": {
+        "state": "UNCONDITIONAL_SYNTAX",
+        "model": "nested-random-first-matching-branch-v1",
+        "constraints": [],
+        "justification": "No supported conditional predicate surrounds this syntax; necessity is not inferred."
+      },
+      "potential_usage_ids": [
+        1
+      ],
+      "candidates": [
+        {
+          "entry_id": 3,
+          "physical_file_id": 2,
+          "observation_root_id": 1,
+          "component_id": 1,
+          "entry_key": "C:\\BMSLIBRARYAUDITSYNTHETIC\\PHASE4-V1\\LIBRARY\\A\\COPY.WAV",
+          "original_path": "C:\\BmsLibraryAuditSynthetic\\phase4-v1\\library\\A\\copy.wav",
+          "relative_path": "copy.wav",
+          "native_identity": "00000000:0000000000000003",
+          "sha256": "552c6a29878edc1c91ab7d244f09194df91df1a614e04874e667c92058ff852e",
+          "size": 13,
+          "match_policy": "LEXICAL_ORDINAL"
+        }
+      ],
+      "limitations": [
+        "Historical inventory correspondence only; simulator lookup/necessity and current filesystem state remain unproved."
+      ]
+    },
+    {
+      "declaration_id": 2,
+      "written_path": "image.png",
+      "relative_base": "",
+      "candidate_relative_path": "image.png",
+      "path_policy": "LEXICAL_ORDINAL",
+      "resolution_state": "OBSERVED_PATH_MATCH",
+      "semantic_state": "POTENTIAL_USE_RELATION",
+      "reachability": {
+        "state": "UNCONDITIONAL_SYNTAX",
+        "model": "nested-random-first-matching-branch-v1",
+        "constraints": [],
+        "justification": "No supported conditional predicate surrounds this syntax; necessity is not inferred."
+      },
+      "potential_usage_ids": [
+        2
+      ],
+      "candidates": [
+        {
+          "entry_id": 4,
+          "physical_file_id": 3,
+          "observation_root_id": 1,
+          "component_id": 1,
+          "entry_key": "C:\\BMSLIBRARYAUDITSYNTHETIC\\PHASE4-V1\\LIBRARY\\A\\IMAGE.PNG",
+          "original_path": "C:\\BmsLibraryAuditSynthetic\\phase4-v1\\library\\A\\image.png",
+          "relative_path": "image.png",
+          "native_identity": "00000000:0000000000000004",
+          "sha256": "cf0dd6bf76de6dd9568a97d4a7cd2f55538bf219638397d970f00a57f67598f9",
+          "size": 11,
+          "match_policy": "LEXICAL_ORDINAL"
+        }
+      ],
+      "limitations": [
+        "Historical inventory correspondence only; simulator lookup/necessity and current filesystem state remain unproved."
+      ]
+    },
+    {
+      "declaration_id": 3,
+      "written_path": "absent.wav",
+      "relative_base": "",
+      "candidate_relative_path": "absent.wav",
+      "path_policy": "LEXICAL_RELATIVE_V1",
+      "resolution_state": "NO_OBSERVED_MATCH",
+      "semantic_state": "DECLARED_POTENTIAL_NO_OBSERVED_USE",
+      "reachability": {
+        "state": "UNCONDITIONAL_SYNTAX",
+        "model": "nested-random-first-matching-branch-v1",
+        "constraints": [],
+        "justification": "No supported conditional predicate surrounds this syntax; necessity is not inferred."
+      },
+      "potential_usage_ids": [],
+      "candidates": [],
+      "limitations": [
+        "No match under this literal scoped policy; external aliases, implicit extensions or other player behavior could differ. Absolute absence is not established."
+      ]
+    }
+  ],
+  "usages": [
+    {
+      "usage_id": 0,
+      "reachability": {
+        "state": "UNCONDITIONAL_SYNTAX",
+        "model": "nested-random-first-matching-branch-v1",
+        "constraints": [],
+        "justification": "No supported conditional predicate surrounds this syntax; necessity is not inferred."
+      },
+      "semantic_state": "POTENTIAL_SYNTACTIC_USE"
+    },
+    {
+      "usage_id": 1,
+      "reachability": {
+        "state": "UNCONDITIONAL_SYNTAX",
+        "model": "nested-random-first-matching-branch-v1",
+        "constraints": [],
+        "justification": "No supported conditional predicate surrounds this syntax; necessity is not inferred."
+      },
+      "semantic_state": "POTENTIAL_SYNTACTIC_USE"
+    },
+    {
+      "usage_id": 2,
+      "reachability": {
+        "state": "UNCONDITIONAL_SYNTAX",
+        "model": "nested-random-first-matching-branch-v1",
+        "constraints": [],
+        "justification": "No supported conditional predicate surrounds this syntax; necessity is not inferred."
+      },
+      "semantic_state": "POTENTIAL_SYNTACTIC_USE"
+    }
+  ],
+  "resolution_coverage": "COMPLETE_OBSERVED_PATH_ANALYSIS",
+  "conditional_coverage": "COMPLETE_BOUNDED_MODEL",
+  "diagnostics": [],
+  "limitations": [
+    "No package-root inference, external lookup, extension substitution, resource opening or hash-based name substitution.",
+    "Phase 3 library-root native facts are unsigned hints; sealed library path membership and chart native identity/stamps/bytes are checked independently.",
+    "Duplicate logical declarations and all decoding/conditional alternatives remain potential obligations; no first/last-wins or required/unused classification.",
+    "Physical and semantic claims refer to a historical observation window, not a current immutable snapshot."
+  ],
+  "dependency_closure_proven": false,
+  "removal_authority": false,
+  "limits": {
+    "maximum_report_bytes": 67108864,
+    "maximum_inventory_files": 100000,
+    "maximum_references": 50000,
+    "maximum_candidates_per_reference": 64,
+    "maximum_candidate_links": 100000,
+    "maximum_conditional_depth": 64,
+    "maximum_symbolic_terms": 100000
+  },
+  "notice": "Sanitized deserialization-only v1 fixture. Paths, native identities, timestamps and seal-related digests are synthetic placeholders; CONTENT/PREFLIGHT seals are not valid evidence. Historical sealed observation, not current filesystem truth or a package boundary. Phase 3 JSON is unsigned; syntax is reconstructed from CONTENT-bound included bytes. Authored resource paths are never opened. Matches do not certify simulator semantics, dependency closure, merge safety or deletion authority.",
+  "exit_code": 0
+}

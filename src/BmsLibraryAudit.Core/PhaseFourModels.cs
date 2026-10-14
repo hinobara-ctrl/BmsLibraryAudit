@@ -4,7 +4,8 @@ public sealed record PhaseFourOptions(string DatabasePath, long ContentSessionId
     string ChartReportPath, string ObservationRootKey, string OutputDirectory);
 public sealed record PhaseFourLimits(int MaximumReportBytes = 64 * 1024 * 1024, int MaximumInventoryFiles = 100000,
     int MaximumReferences = 50000, int MaximumCandidatesPerReference = 64, int MaximumCandidateLinks = 100000,
-    int MaximumConditionalDepth = 64, int MaximumSymbolicTerms = 100000);
+    int MaximumConditionalDepth = 64, int MaximumSymbolicTerms = 100000,
+    int MaximumSemanticRelations = 100000, int MaximumSemanticCandidateLinks = 100000, int MaximumSemanticSymbolicTerms = 100000);
 public sealed record ObservedResourceCandidate(long EntryId, long PhysicalFileId, long ObservationRootId,
     long ComponentId, string EntryKey, string OriginalPath, string RelativePath, string NativeIdentity,
     string Sha256, long Size, string MatchPolicy);
@@ -22,8 +23,9 @@ public sealed record PhaseFourProvenance(long ContentSessionId, string ContentDi
 public sealed record PhaseFourResult(string ResultVersion, PhaseFourProvenance Provenance, ChartSyntaxResult VerifiedSyntax,
     ResolvedResourceDeclaration[] Declarations, ResolvedResourceUsage[] Usages, string ResolutionCoverage,
     string ConditionalCoverage, string[] Diagnostics, string[] Limitations, bool DependencyClosureProven,
-    bool RemovalAuthority, PhaseFourLimits Limits, string Notice)
+    bool RemovalAuthority, PhaseFourLimits Limits, string Notice, PhaseFourSemanticAnalysis? Semantics = null)
 {
     public int ExitCode => ResolutionCoverage == "COMPLETE_OBSERVED_PATH_ANALYSIS" &&
-        ConditionalCoverage == "COMPLETE_BOUNDED_MODEL" && VerifiedSyntax.SyntaxCoverage == "COMPLETE_SUPPORTED_SYNTAX" ? 0 : 2;
+        ConditionalCoverage == "COMPLETE_BOUNDED_MODEL" && VerifiedSyntax.SyntaxCoverage == "COMPLETE_SUPPORTED_SYNTAX" &&
+        (Semantics is null || Semantics.RelationEnumerationCoverage == "COMPLETE") ? 0 : 2;
 }
