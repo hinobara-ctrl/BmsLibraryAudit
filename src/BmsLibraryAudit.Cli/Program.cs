@@ -7,12 +7,13 @@ return Run(args);
 static int Run(string[] args)
 {
     const string usage = """
-        BmsLibraryAudit: Phase 1 and synthetic-validated Phase 2A (Windows)
+        BmsLibraryAudit: Phase 1 and synthetic-validated Phase 2A/2B (Windows)
         bms-audit scan --db <audit.db> --root <path> [--root <path> ...] [--rehash-all]
         bms-audit report --db <audit.db> --output <new-or-empty-directory>
         bms-audit phase2 preflight --source-db <audit.db> --source-scan <id> --db <phase2.db> --output <new-or-empty-directory> [--component <EXACT_ONLY-id> ...]
+        bms-audit phase2 hash --db <phase2.db> --preflight <id> --accept-manifest <sha256> --output <new-or-empty-directory>
         bms-audit phase2 report --db <phase2.db> --session <id> --output <new-or-empty-directory>
-        Phase 2B hashing is not implemented. Real-library Phase 2A execution requires separate authorization.
+        CONTENT is explicit and requires an accepted completed PREFLIGHT. Real-library execution requires separate authorization.
         Outputs must be outside source libraries. Sources are only read.
         """;
     if (args.Length == 0 || args is ["--help"] or ["-h"])
@@ -54,7 +55,7 @@ static int Run(string[] args)
         Console.WriteLine($"Reports: summary.json, duplicate_charts.csv, folder_candidates.csv, clusters.csv\nCandidate pairs: {analysis.Candidates.Count}; duplicate SHA-256 groups: {analysis.DuplicateGroups.Count}");
         return 0;
     }
-    catch (OperationCanceledException) { Console.Error.WriteLine(args[0] == "phase2" ? "Phase 2A operation cancelled; inspect the persisted session/export state." : "Scan cancelled; transaction rolled back."); return 130; }
+    catch (OperationCanceledException) { Console.Error.WriteLine(args[0] == "phase2" ? "Phase 2 operation cancelled; inspect the persisted session/export state." : "Scan cancelled; transaction rolled back."); return 130; }
     catch (Exception exception) when (args[0] == "phase2" && exception is JsonException or FormatException or InvalidCastException or OverflowException)
     { Console.Error.WriteLine($"Error: invalid Phase 2 input/evidence: {exception.Message}"); return 1; }
     catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or IOException or UnauthorizedAccessException or SqliteException)
@@ -63,10 +64,9 @@ static int Run(string[] args)
 
 static int RunPhaseTwo(string[] args, CancellationToken token)
 {
-    if (args.Length < 2) throw new ArgumentException("phase2 requires preflight or report.");
+    if (args.Length < 2) throw new ArgumentException("phase2 requires preflight, hash or report.");
     var command = args[1];
-    if (command == "hash") throw new ArgumentException("Phase 2B hashing is unsupported and not authorized. No payload reads were started.");
-    if (command is not ("preflight" or "report")) throw new ArgumentException("Unknown Phase 2 command.");
+    if (command is not ("preflight" or "hash" or "report")) throw new ArgumentException("Unknown Phase 2 command.");
     var options = new Dictionary<string, string>(StringComparer.Ordinal);
     var components = new List<string>();
     for (var index = 2; index < args.Length; index++)
@@ -75,15 +75,20 @@ static int RunPhaseTwo(string[] args, CancellationToken token)
         if (++index >= args.Length || args[index].StartsWith("--", StringComparison.Ordinal)) throw new ArgumentException("Missing option value: " + key);
         var value = args[index];
         if (key == "--component" && command == "preflight") { components.Add(value); continue; }
-        var valid = key is "--db" or "--output" || command == "preflight" && key is "--source-db" or "--source-scan" || command == "report" && key == "--session";
+        var valid = key is "--db" or "--output" || command == "preflight" && key is "--source-db" or "--source-scan" || command == "report" && key == "--session" || command == "hash" && key is "--preflight" or "--accept-manifest";
         if (!valid || !options.TryAdd(key, value)) throw new ArgumentException("Unknown, duplicate or inapplicable option: " + key);
     }
     string Required(string key) => options.TryGetValue(key, out var value) ? value : throw new ArgumentException(key + " is required.");
     long Id(string key) => long.TryParse(Required(key), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var id) && id > 0 ? id : throw new ArgumentException("Invalid positive identifier: " + key);
+    var preflight = command == "hash" ? Id("--preflight") : 0;
+    var accepted = command == "hash" ? Required("--accept-manifest") : "";
     var db = Required("--db"); var output = Required("--output");
-    var result = command == "preflight"
-        ? new PhaseTwoPreflightRunner().Run(new(Required("--source-db"), Id("--source-scan"), db, output, components), token)
-        : PhaseTwoReportWriter.Write(db, Id("--session"), output, token);
+    var result = command switch
+    {
+        "preflight" => new PhaseTwoPreflightRunner().Run(new(Required("--source-db"), Id("--source-scan"), db, output, components), token),
+        "hash" => new PhaseTwoContentRunner().Run(new(db, preflight, accepted, output), token),
+        _ => PhaseTwoReportWriter.Write(db, Id("--session"), output, token)
+    };
     Console.WriteLine(JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true }));
     return result.State == "COMPLETED" ? result.ExitCode : result.State == "CANCELLED" ? 130 : result.State == "STALE" ? 2 : 1;
 }

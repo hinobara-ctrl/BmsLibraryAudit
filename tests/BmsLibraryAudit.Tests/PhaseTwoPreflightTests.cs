@@ -175,7 +175,8 @@ public sealed class PhaseTwoPreflightTests
         Assert.Equal("COMPLETED", result.State); Assert.Equal(1, result.AdmittedComponents);
         Assert.Equal(new[] { fixture.Path("A", "one.BMS"), fixture.Path("B", "one.BMS") }, instrument.Reads);
         Assert.Equal(1, fixture.Number("SELECT count(*) FROM preflight_entries WHERE kind='DIRECTORY' AND original_path LIKE '%empty'"));
-        Assert.Equal(0, fixture.Number("SELECT count(*) FROM sqlite_schema WHERE name LIKE 'comparisons%'"));
+        Assert.Equal(0, fixture.Number("SELECT count(*) FROM comparisons"));
+        Assert.Equal(0, fixture.Number("SELECT count(*) FROM sessions WHERE stage='CONTENT'"));
         using var summary = fixture.Summary(); Assert.Equal(0, summary.RootElement.GetProperty("non_chart_payload_reads").GetInt64());
         Assert.Equal("NONE", summary.RootElement.GetProperty("trusted_content_evidence_scope").GetString());
     }
@@ -738,7 +739,7 @@ public sealed class PhaseTwoPreflightTests
         }
         public PhaseTwoChartRead ReadChart(string path, CancellationToken token) { Reads.Add(path); return ReadOverride?.Invoke(path) ?? real.ReadChart(path, token); }
     }
-    private sealed class Fixture : IDisposable
+    internal sealed class Fixture : IDisposable
     {
         private readonly string parent = System.IO.Path.Combine(AppContext.BaseDirectory, "phase2-fixtures");
         public string Base { get; }

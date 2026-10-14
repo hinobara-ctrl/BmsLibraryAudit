@@ -1,11 +1,11 @@
 # BmsLibraryAudit — Current Roadmap
 
-**Planning revision:** 2026-10-14 (implementation-first strategy update).
-**Status:** Original roadmap committed in `63f5be6fdfbe05caeef37b8c2783f11473b0599e`; this strategy update awaits independent review and authorized publication.
+**Planning revision:** 2026-10-14 (Phase 2B synthetic implementation update).
+**Status:** Original roadmap committed in `63f5be6fdfbe05caeef37b8c2783f11473b0599e`; the implementation-first strategy was published in `f3d6bfb028be026bb088f620ad76d76b3256c9c2`. This Phase 2B implementation update awaits independent review and authorized publication.
 **Historical planning baseline (2026-10-12):** `hinobara-ctrl/BmsLibraryAudit@7bd460503a51a63e19cf85003893f75dadd6bb54` (`main`).
 **External comparison snapshot:** `Neeted/bemusicseeker-unofficial-fork@541db4fde12d1091ce0b7c939e11dd07d435b81c` (`dev`).
 
-This roadmap updates *planning priorities*, **not** the implementation status, historical findings, sealed evidence, approved scope, or authorization gates. Existing phase contracts remain authoritative for their scopes. [`MASTER_CONTEXT.md`](MASTER_CONTEXT.md) remains the historical architecture and requirement record; [`AGENTS.md`](AGENTS.md) remains repository policy.
+This roadmap records current planning priorities and implemented capabilities without changing historical findings, sealed evidence or authorization gates. Existing phase contracts remain authoritative for their scopes. [`MASTER_CONTEXT.md`](MASTER_CONTEXT.md) remains the historical architecture and requirement record; [`AGENTS.md`](AGENTS.md) remains repository policy.
 
 ## 1. Mission and end state
 
@@ -31,9 +31,9 @@ The intended final product is **not** a general-purpose library manager or a BeM
 
 The first mutation-capable release must avoid automatic rewriting of BMS/BMSON. If preserving colliding variants requires changes to chart references or bytes, mark `MANUAL_CONFLICT` / blocked, or design a later separately reviewed rewrite feature that preserves/explicitly accounts for historical chart identity impacts (scores, IR, replays). Preservation of raw bytes and preservation of playback semantics are both obligations.
 
-### 1.2 Next usable milestone: exact folder-content comparison
+### 1.2 Current usable milestone: exact folder-content comparison
 
-Deliver a read-only comparison increment on synthetic/disposable libraries first: all observed charts, strong-hash byte identities, exclusive files, same-relative-path conflicts, same-content/different-name cases, physical multiplicity and explicit missing/unreadable/unstable/UNKNOWN/BLOCKED outcomes in deterministic user-facing results. This is future Phase 2B functionality, not an implemented comparison command or a replacement for the final fusion/cleanup goal. Its first scope remains complete EXACT_ONLY components under the existing contract; wider related candidates require a separately reviewed scope.
+Phase 2B now delivers read-only comparison on owned synthetic fixtures: freshly hashed required files, exclusive entries, relative-path conflicts, same-content/different-name groups, multiplicity and explicit COMPLETE/INCOMPLETE or global STALE/FAILED/CANCELLED outcomes. `phase2 hash` requires a sealed preflight ID and its exact accepted manifest. Complete EXACT_ONLY components remain the only scope; wider related candidates require a separately reviewed contract. Content equality does not replace the final dependency, fusion and cleanup proofs. The next functional implementation is conservative chart/resource dependency extraction on synthetic fixtures, under separate authorization.
 
 Implementation, verification and real-data access are separate permissions. Unresolved conditions block affected operations without making unsupported behavior safe or unnecessarily blocking unrelated authorized code work. Source Inspector native acceptance applies to its selected acquisition/verification workstream; B1–B6 are not automatically dependencies of every code change. Actual safe-discovery tooling, pilot provenance, independent verification, preservation/observation and real-access gates remain mandatory.
 
@@ -44,7 +44,7 @@ Implementation, verification and real-data access are separate permissions. Unre
 | Phase 1: chart index, SHA-256/MD5, relationships, clusters, reports | `VALIDATED` on a real library; independent .NET 10 SQLite/CLI | Retain implemented semantics and avoid a broad rewrite. Historical Scan 4 figures are reported evidence, not a new source inspection. |
 | Phase 2A: complete `EXACT_ONLY` component preflight, direct-chart revalidation, metadata-only inventory, independent preflight DB/seal/reports | Implemented with synthetic Windows validation; real-library pilot **not run/authorized** | Continue through existing review and independent pilot gates. No non-chart byte identity established. |
 | Independent offline source inspector | Offline closure `READY_FOR_INDEPENDENT_REVIEW`; native observer and source-file inspection obligations open | Do not claim production/native coverage or use offline success as permission to access real source data. |
-| Phase 2B: accepted-manifest-bound payload hashing/comparison | **UNIMPLEMENTED; NOT AUTHORIZED** | Implement only after contract/schema review and separate authorization; no code shortcut from Phase 2A into CONTENT. |
+| Phase 2B: accepted-manifest-bound payload hashing/comparison | Implemented with synthetic Windows validation; **no real-library execution authorized** | Explicit CONTENT command, fresh SHA-256 per required path, exact tree/multiset comparisons, immutable evidence and deterministic reports. New `PREFLIGHT_AND_CONTENT` / `phase2ab-content-1` profile; old profiles rejected unchanged without migration. Independent review remains required. |
 | BMS/BMSON dependency parser, conditional reachability, package classifier | Research/planning only | New implementations need dedicated design, tests and gates. |
 | Immutable merge plans, staging, publishing and cleanup | Not implemented; no source mutation authorized | Keep as long-term mandatory objectives, explicitly distinct from any current permission. |
 
@@ -145,8 +145,8 @@ Implement established solutions under bounded authorization. The questions below
 
 | Priority | Research question | Smallest useful proof or experiment | Depends on |
 | --- | --- | --- | --- |
-| **P0 — immediate implementation/safety** | Can Phase 2A's source-opening boundary and future pilot be accepted for their exact scopes? | Implement the authorized pre-provider WAL-header refusal and regressions; obtain reviewer disposition and applicable native/provenance/preservation evidence before separately authorized real discovery/pilot. | Existing Phase 2A contracts and distinct implementation/verification/real-access authorizations. |
-| **P1 — next usable increment** | How do we compare exact candidate contents without hashing a terabyte blindly or losing multiplicity? | Resolve only outstanding Phase 2B schema/compatibility decisions; once explicitly authorized, implement a bounded synthetic vertical slice using accepted-manifest validation, fresh SHA-256, complete file coverage and exact path/multiset outcomes under the existing contract. | Valid sealed synthetic 2A scope, separately reviewed 2B implementation/schema gate; real execution needs its own approval. |
+| **P0 — immediate safety/review** | Can Phase 2A's source-opening boundary and future pilot be accepted for their exact scopes? | WAL-header refusal and synthetic regressions are implemented; obtain independent reviewer disposition and applicable native/provenance/preservation evidence before separately authorized real discovery/pilot. | Existing Phase 2A contracts and distinct verification/real-access authorizations. |
+| **P1 — next functional implementation** | Which potential resources must every supported chart retain? | Implement conservative BMS/BMSON dependency extraction with synthetic conditional, malformed, encoding and unresolved-reference fixtures. Mark uncertainty explicitly; do not infer removal from content equality. Phase 2B comparison is implemented synthetically and still needs independent review. | Existing Phase 2B evidence and separately authorized Phase 3 scope; real execution has its own gate. |
 | **P2 — parallel offline research** | What are the **conservation** gaps of modern Neeted's parsers, resolver and collision policy? | Source-to-contract matrix at pinned commit; minimal self-created fixture suite: matching MD5, colliding resource name with same size/time but different bytes, conditional unused branch, resource-only folders. No source mutation outside disposable copies. | Public documentation/code only; provenance review. |
 | **P3 — parser design** | How to enumerate potential resources from malformed and nested `RANDOM/IF/SWITCH` safely? | Formal conditional-dependency model plus independent golden fixtures and bounded branch analysis. | Phase 3 design; no real-library reads without approval. |
 | **P4 — resolver design** | When can two physical files with different paths substitute without breaking references? | File/path/encoding/simulator compatibility matrix; independent fixtures preserving chart bytes; include nested roots, external references and case collisions. | Phases 3–4. |
@@ -178,13 +178,13 @@ Tests of Neeted on disposable fixtures can be an **external comparator**, but sh
 ## 7. Near-term execution sequence and decision rules
 
 1. **Implement resolved findings when authorized:** prefer small, usable corrections and functional increments with proportionate regression, preserving contracts and historical evidence. Current strategy documentation is not operational or next-phase authorization.
-2. **Phase 2A safety and review:** implement the specifically authorized WAL pre-open correction; independently review it and resolve appropriate acquisition/provenance/preservation evidence for the operation actually proposed. Native Source Inspector gates remain in their applicable workstream. Do not promote READY_FOR_REVIEW to accepted or weaken real-pilot prerequisites.
+2. **Phase 2A safety and review:** the WAL pre-open correction is implemented; independently review it and resolve appropriate acquisition/provenance/preservation evidence for the operation actually proposed. Native Source Inspector gates remain in their applicable workstream. Do not promote READY_FOR_REVIEW to accepted or weaken real-pilot prerequisites.
 3. **Real pilot, when specifically approved:** current Phase 1 source/report discovery; freeze accepted EXACT_ONLY component closures; separately approve pilot, receipt verification and any full 2A run. No speculative real-source commands in this roadmap.
-4. **Phase 2B usable synthetic implementation, when separately authorized:** use the existing content evidence contract, settle necessary schema/compatibility decisions and implement the smallest complete comparison increment on owned synthetic preflight evidence. Additional research addresses only unresolved material decisions. Real execution and broader candidate scope require their own gates; pilot success grants no automatic 2B permission.
+4. **Phase 2B independent review:** review the implemented synthetic CONTENT flow, schema refusal, complete physical coverage, comparisons, seals and deterministic reports. Sequential reads are bounded; pair views use scope-sized memory, and no large-scale acceptance is claimed. Real execution and broader candidate scope require their own gates; pilot success grants no automatic 2B permission.
 5. **Parallel research, not parallel permission:** investigate modern Neeted gaps and independent BMS/BMSON dependency semantics using public code and **synthetic** fixtures, documenting evidence and uncertainty without modifying the source library.
 6. **Continue Phase 3 through Phase 9** through distinct reviewed gates; success is **verified fusion and cleanup**, not merely producing reports.
 
-**No authorization is implied** to stage/commit/push this document, access real source databases/folders, run the Phase 2A pilot, implement Phase 2B, modify a source library, or execute consolidation. The prohibition in present operational contracts stays in force until a later phase explicitly authorizes and implements those actions.
+**No authorization is implied** to stage/commit/push this document, access real source databases/folders, run the Phase 2A pilot or real Phase 2B, implement Phase 3, modify a source library, or execute consolidation. The explicit bounded Phase 2B implementation authorization applies only to development and synthetic validation. Present operational gates remain in force.
 
 ## 8. Traceable reference documents
 

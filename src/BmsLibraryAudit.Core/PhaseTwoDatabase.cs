@@ -2,8 +2,10 @@ using Microsoft.Data.Sqlite;
 
 namespace BmsLibraryAudit.Core;
 
-internal sealed class PhaseTwoDatabase : IDisposable
+internal sealed partial class PhaseTwoDatabase : IDisposable
 {
+    internal const string Capabilities = "PREFLIGHT_AND_CONTENT";
+    internal const string SchemaRevision = "phase2ab-content-1";
     internal const int ApplicationId = 0x424D5332;
     internal const string AbsoluteMode = "windows-ordinal-ignore-case";
     internal const string RelativeMode = "relative-ordinal-spelling-v1";
@@ -81,7 +83,7 @@ internal sealed class PhaseTwoDatabase : IDisposable
         RequireScalar(connection, "PRAGMA application_id", ApplicationId); RequireScalar(connection, "PRAGMA user_version", 1);
         using var command = connection.CreateCommand();
         foreach (var (key, value) in new[] { ("tool", "BmsLibraryAudit.Phase2"), ("contract_version", ContractVersion),
-            ("absolute_comparison_mode", AbsoluteMode), ("relative_comparison_mode", RelativeMode), ("capabilities", "PREFLIGHT_ONLY"), ("schema_revision", "phase2a-hardening-1") })
+            ("absolute_comparison_mode", AbsoluteMode), ("relative_comparison_mode", RelativeMode), ("capabilities", Capabilities), ("schema_revision", SchemaRevision) })
         {
             command.CommandText = "SELECT value FROM schema_metadata WHERE key=$key";
             command.Parameters.Clear(); command.Parameters.AddWithValue("$key", key);
@@ -133,9 +135,10 @@ internal sealed class PhaseTwoDatabase : IDisposable
         Execute($"INSERT INTO {table}({columns}) VALUES({string.Join(',', Enumerable.Range(0, values.Length).Select(i => "$" + i))})", values);
         return Number("SELECT last_insert_rowid()");
     }
-    internal void Diagnostic(long session, long? component, long? root, long? entry, string code, string path, string message, string severity = "ERROR", int? attempt = null)
-        => Insert("diagnostics", "session_id,component_id,root_id,entry_id,gate,severity,code,original_path,normalized_path,attempt,message",
-            session, component, root, entry, "PREFLIGHT", severity, code, path, PathPolicy.Normalize(path), attempt, message);
+    internal void Diagnostic(long session, long? component, long? root, long? entry, string code, string path, string message, string severity = "ERROR", int? attempt = null, long? physical = null)
+        => Insert("diagnostics", "session_id,preflight_id,component_id,root_id,entry_id,physical_file_id,gate,severity,code,original_path,normalized_path,attempt,message",
+            session, Scalar("SELECT COALESCE(parent_preflight_id,session_id) FROM sessions WHERE session_id=$0", session),
+            component, root, entry, physical, Scalar("SELECT stage FROM sessions WHERE session_id=$0", session), severity, code, path, PathPolicy.Normalize(path), attempt, message);
     internal void CheckIntegrity()
     {
         if ((string?)Scalar("PRAGMA quick_check") != "ok" || Rows("PRAGMA foreign_key_check").Any())
@@ -147,7 +150,7 @@ internal sealed class PhaseTwoDatabase : IDisposable
         Execute($"PRAGMA application_id={ApplicationId}; PRAGMA user_version=1");
         Execute(Schema);
         foreach (var (key, value) in new[] { ("tool", "BmsLibraryAudit.Phase2"), ("schema_version", "1"), ("contract_version", ContractVersion),
-            ("absolute_comparison_mode", AbsoluteMode), ("relative_comparison_mode", RelativeMode), ("capabilities", "PREFLIGHT_ONLY"), ("schema_revision", "phase2a-hardening-1") })
+            ("absolute_comparison_mode", AbsoluteMode), ("relative_comparison_mode", RelativeMode), ("capabilities", Capabilities), ("schema_revision", SchemaRevision) })
             Insert("schema_metadata", "key,value", key, value);
         foreach (var table in new[] { "source_snapshots", "source_library_roots", "source_charts", "source_diagnostics", "candidate_components",
             "observation_roots", "component_memberships", "source_exact_edges", "chart_revalidations", "direct_chart_memberships",
@@ -169,8 +172,6 @@ internal sealed class PhaseTwoDatabase : IDisposable
             }
         }
         Execute("""
-            CREATE TRIGGER content_not_implemented BEFORE INSERT ON sessions WHEN NEW.stage='CONTENT'
-            BEGIN SELECT RAISE(ABORT,'Phase 2B is not implemented or authorized'); END;
             CREATE TRIGGER session_initial_state BEFORE INSERT ON sessions WHEN NEW.state<>'RUNNING' OR NEW.final_evidence_digest IS NOT NULL
             BEGIN SELECT RAISE(ABORT,'Sessions must start RUNNING without accepted evidence'); END;
             CREATE TRIGGER immutable_session_identity BEFORE UPDATE ON sessions
@@ -180,7 +181,7 @@ internal sealed class PhaseTwoDatabase : IDisposable
               OR NEW.runtime_build_sha IS NOT OLD.runtime_build_sha OR NEW.source_component_count IS NOT OLD.source_component_count
             BEGIN SELECT RAISE(ABORT,'Session identity and stage are immutable'); END;
             CREATE TRIGGER session_state_transition BEFORE UPDATE ON sessions
-            WHEN OLD.state='RUNNING' AND (NEW.state NOT IN ('RUNNING','COMPLETED','FAILED','CANCELLED')
+            WHEN OLD.state='RUNNING' AND ((NEW.state NOT IN ('RUNNING','COMPLETED','FAILED','CANCELLED') AND NOT (NEW.stage='CONTENT' AND NEW.state='STALE'))
               OR (NEW.state<>'COMPLETED' AND NEW.final_evidence_digest IS NOT NULL)
               OR (NEW.state='COMPLETED' AND (NEW.final_evidence_digest IS NULL OR length(NEW.final_evidence_digest)<>64
                   OR NEW.final_evidence_digest GLOB '*[^0-9a-f]*')))
@@ -194,6 +195,7 @@ internal sealed class PhaseTwoDatabase : IDisposable
             CREATE TRIGGER immutable_schema_delete BEFORE DELETE ON schema_metadata
             BEGIN SELECT RAISE(ABORT,'Schema identity is immutable'); END;
             """);
+        InitializeContent();
         Commit();
     }
     public void Dispose() { try { transaction?.Dispose(); Connection.Dispose(); } finally { binding?.Dispose(); } }
@@ -207,7 +209,8 @@ internal sealed class PhaseTwoDatabase : IDisposable
             final_evidence_digest TEXT,source_component_count INTEGER NOT NULL CHECK(source_component_count>=0),
             CHECK((stage='PREFLIGHT' AND parent_preflight_id IS NULL AND accepted_manifest_sha256 IS NULL) OR
                   (stage='CONTENT' AND parent_preflight_id IS NOT NULL AND accepted_manifest_sha256 IS NOT NULL AND length(accepted_manifest_sha256)=64)),
-            CHECK(state='RUNNING' OR completed_utc IS NOT NULL),CHECK(state<>'COMPLETED' OR (final_evidence_digest IS NOT NULL AND length(final_evidence_digest)=64)));
+            CHECK(state='RUNNING' OR completed_utc IS NOT NULL),CHECK(state<>'COMPLETED' OR (final_evidence_digest IS NOT NULL AND length(final_evidence_digest)=64)),
+            UNIQUE(session_id,parent_preflight_id));
         CREATE TABLE source_snapshots(snapshot_id INTEGER PRIMARY KEY REFERENCES sessions(session_id),preflight_id INTEGER NOT NULL UNIQUE REFERENCES sessions(session_id),
             repository_baseline_sha TEXT NOT NULL,phase1_implementation_sha TEXT NOT NULL,
             source_db_original_path TEXT NOT NULL,source_db_normalized_path TEXT NOT NULL,source_db_native_identity TEXT,
@@ -269,14 +272,16 @@ internal sealed class PhaseTwoDatabase : IDisposable
         CREATE TRIGGER physical_regular_update BEFORE UPDATE ON physical_files WHEN (SELECT kind FROM preflight_entries WHERE entry_id=NEW.entry_id)<>'REGULAR_FILE'
             BEGIN SELECT RAISE(ABORT,'Physical file must be regular'); END;
         CREATE TABLE observation_memberships(preflight_id INTEGER NOT NULL,observation_root_id INTEGER NOT NULL,entry_id INTEGER NOT NULL,
-            relative_path TEXT NOT NULL,relative_path_key TEXT NOT NULL,PRIMARY KEY(observation_root_id,entry_id),UNIQUE(observation_root_id,relative_path_key),
+            relative_path TEXT NOT NULL,relative_path_key TEXT NOT NULL,PRIMARY KEY(observation_root_id,entry_id),UNIQUE(observation_root_id,relative_path_key),UNIQUE(preflight_id,observation_root_id,entry_id),
             FOREIGN KEY(preflight_id,observation_root_id) REFERENCES observation_roots(preflight_id,observation_root_id),
             FOREIGN KEY(preflight_id,entry_id) REFERENCES preflight_entries(preflight_id,entry_id));
         CREATE INDEX membership_entry ON observation_memberships(preflight_id,entry_id);
-        CREATE TABLE diagnostics(diagnostic_id INTEGER PRIMARY KEY,session_id INTEGER NOT NULL REFERENCES sessions(session_id),component_id INTEGER,root_id INTEGER,entry_id INTEGER,
+        CREATE TABLE diagnostics(diagnostic_id INTEGER PRIMARY KEY,session_id INTEGER NOT NULL REFERENCES sessions(session_id),preflight_id INTEGER NOT NULL REFERENCES sessions(session_id),component_id INTEGER,root_id INTEGER,entry_id INTEGER,physical_file_id INTEGER,
             gate TEXT NOT NULL,severity TEXT NOT NULL,code TEXT NOT NULL,original_path TEXT NOT NULL,normalized_path TEXT NOT NULL,attempt INTEGER,message TEXT NOT NULL,
-            FOREIGN KEY(session_id,component_id) REFERENCES candidate_components(preflight_id,component_id),
-            FOREIGN KEY(session_id,root_id) REFERENCES observation_roots(preflight_id,observation_root_id),FOREIGN KEY(session_id,entry_id) REFERENCES preflight_entries(preflight_id,entry_id));
+            FOREIGN KEY(preflight_id,component_id) REFERENCES candidate_components(preflight_id,component_id),
+            FOREIGN KEY(preflight_id,root_id) REFERENCES observation_roots(preflight_id,observation_root_id),FOREIGN KEY(preflight_id,entry_id) REFERENCES preflight_entries(preflight_id,entry_id),
+            FOREIGN KEY(preflight_id,physical_file_id) REFERENCES physical_files(preflight_id,physical_file_id),
+            FOREIGN KEY(preflight_id,component_id,root_id) REFERENCES component_memberships(preflight_id,component_id,observation_root_id));
         CREATE INDEX diagnostic_context ON diagnostics(session_id,component_id,root_id,normalized_path);
         CREATE TABLE report_sets(report_set_id INTEGER PRIMARY KEY,session_id INTEGER NOT NULL REFERENCES sessions(session_id),evidence_stage TEXT NOT NULL,
             evidence_state TEXT NOT NULL,evidence_identity TEXT,original_destination TEXT NOT NULL,normalized_destination TEXT NOT NULL,

@@ -14,10 +14,15 @@ public static class PhaseTwoReportWriter
         using var writerLock = PhaseTwoWriter.Acquire(databasePath);
         using var read = PhaseTwoDatabase.Open(databasePath, false);
         var sessionRows = Objects(read, "SELECT * FROM sessions WHERE session_id=$0", session).ToArray();
-        if (sessionRows.Length != 1 || (string)sessionRows[0]["state"]! == "RUNNING") throw new InvalidOperationException("Report requires a terminal persisted preflight session.");
+        if (sessionRows.Length != 1 || (string)sessionRows[0]["state"]! == "RUNNING") throw new InvalidOperationException("Report requires a terminal persisted session.");
         var state = (string)sessionRows[0]["state"]!;
-        if (state == "COMPLETED") PhaseTwoManifest.Verify(read, session);
-        var source = Objects(read, "SELECT * FROM source_snapshots WHERE snapshot_id=$0", session).Single();
+        var content = (string)sessionRows[0]["stage"]! == "CONTENT";
+        var preflight = content ? PhaseTwoContentRunner.Parent(read, session) : session;
+        void Verify() { if (content) PhaseTwoManifest.VerifyContent(read, session, token); else PhaseTwoManifest.Verify(read, session); }
+        if (content) PhaseTwoContentRunner.RequirePreflight(read, preflight, (string)sessionRows[0]["accepted_manifest_sha256"]!);
+        if (state == "COMPLETED") Verify();
+        var names = content && state == "COMPLETED" ? Names.Concat(new[] { "folder_comparisons.csv", "content_groups.csv" }).ToArray() : Names;
+        var source = Objects(read, "SELECT * FROM source_snapshots WHERE snapshot_id=$0", preflight).Single();
         foreach (var captured in read.Rows("SELECT snapshot_id,captured_evidence_digest,seal_flag FROM source_snapshots").ToArray())
             if (Convert.ToInt64(captured[2]) != 1 || (string?)captured[1] != PhaseTwoManifest.Source(read, Convert.ToInt64(captured[0])))
                 throw new InvalidOperationException("Source provenance used for destination safety has an invalid seal.");
@@ -33,7 +38,7 @@ public static class PhaseTwoReportWriter
             receipt.Begin();
             if (receipt.Number("SELECT count(*) FROM report_sets WHERE status='RUNNING'") > 0) throw new InvalidOperationException("Active/interrupted report writer requires inspection.");
             report = receipt.Insert("report_sets", "session_id,evidence_stage,evidence_state,evidence_identity,original_destination,normalized_destination,status",
-                session, "PREFLIGHT", state, sessionRows[0]["final_evidence_digest"], PathPolicy.Absolute(outputDirectory), PathPolicy.Normalize(outputDirectory), "RUNNING");
+                session, content ? "CONTENT" : "PREFLIGHT", state, sessionRows[0]["final_evidence_digest"], PathPolicy.Absolute(outputDirectory), PathPolicy.Normalize(outputDirectory), "RUNNING");
             receipt.Commit();
         }
         try
@@ -49,7 +54,10 @@ public static class PhaseTwoReportWriter
                 return Create(outputDirectory, name);
             }
             read.Begin(readOnly: true);
-            if (state == "COMPLETED") PhaseTwoManifest.Verify(read, session);
+            if (state == "COMPLETED") Verify();
+            if (content) PhaseTwoContentReports.Write(read, session, preflight, state, Output, token);
+            else
+            {
             var roots = Objects(read, """
                 SELECT c.component_key,c.source_component_label,c.outcome,c.reason,r.*,0 AS nested_root_count
                 FROM observation_roots r JOIN component_memberships m ON m.observation_root_id=r.observation_root_id AND m.preflight_id=r.preflight_id
@@ -140,9 +148,10 @@ public static class PhaseTwoReportWriter
                     """, session))
                 { token.ThrowIfCancellationRequested(); Csv(output, [session, session, session, state == "COMPLETED" ? result.ManifestSha256 : null, .. row]); }
             }
+            }
             read.Commit();
             using var receipt = PhaseTwoDatabase.Open(databasePath, true); receipt.Begin();
-            foreach (var name in Names)
+            foreach (var name in names)
             {
                 token.ThrowIfCancellationRequested();
                 var facts = PhaseTwoSafety.Inspect(Path.Combine(outputDirectory, name));
@@ -164,13 +173,24 @@ public static class PhaseTwoReportWriter
             throw;
         }
     }
-    private static PhaseTwoPreflightResult Result(PhaseTwoDatabase db, long session, string state) => new(session, state,
+    private static PhaseTwoPreflightResult Result(PhaseTwoDatabase db, long session, string state)
+    {
+        if ((string?)db.Scalar("SELECT stage FROM sessions WHERE session_id=$0", session) == "CONTENT")
+        {
+            var parent = PhaseTwoContentRunner.Parent(db, session); var original = Result(db, parent, "COMPLETED");
+            return original with { SessionId = session, State = state, ManifestSha256 = (string?)db.Scalar("SELECT final_evidence_digest FROM sessions WHERE session_id=$0", session) ?? "",
+                ParentPreflightId = parent,
+                CompleteContentComponents = state == "COMPLETED" ? db.Number("SELECT count(*) FROM content_component_outcomes WHERE content_session_id=$0 AND outcome='COMPLETE'", session) : null,
+                IncompleteContentComponents = state == "COMPLETED" ? db.Number("SELECT count(*) FROM content_component_outcomes WHERE content_session_id=$0 AND outcome='INCOMPLETE'", session) : null };
+        }
+        return new(session, state,
         (string?)db.Scalar("SELECT final_evidence_digest FROM sessions WHERE session_id=$0", session) ?? "",
         db.Number("SELECT count(*) FROM candidate_components WHERE preflight_id=$0", session),
         db.Number("SELECT count(*) FROM candidate_components WHERE preflight_id=$0 AND outcome='ADMITTED'", session),
         db.Number("SELECT count(*) FROM candidate_components WHERE preflight_id=$0 AND outcome<>'ADMITTED'", session),
         db.Number("SELECT COALESCE(sum(e.size),0) FROM preflight_entries e WHERE e.preflight_id=$0 AND e.kind='REGULAR_FILE' AND EXISTS(SELECT 1 FROM observation_memberships m JOIN component_memberships n ON n.observation_root_id=m.observation_root_id AND n.preflight_id=m.preflight_id JOIN candidate_components c ON c.component_id=n.component_id AND c.preflight_id=n.preflight_id WHERE m.entry_id=e.entry_id AND m.preflight_id=e.preflight_id AND c.outcome='ADMITTED')", session));
-    private static IEnumerable<Dictionary<string, object?>> Objects(PhaseTwoDatabase db, string sql, params object?[] values)
+    }
+    internal static IEnumerable<Dictionary<string, object?>> Objects(PhaseTwoDatabase db, string sql, params object?[] values)
     {
         using var command = db.Command(sql, values); using var reader = command.ExecuteReader();
         while (reader.Read())
@@ -181,7 +201,7 @@ public static class PhaseTwoReportWriter
         }
     }
     private static StreamWriter Create(string directory, string name) => new(new FileStream(Path.Combine(directory, name), FileMode.CreateNew, FileAccess.Write, FileShare.None), new UTF8Encoding(false)) { NewLine = "\n" };
-    private static void Csv(TextWriter writer, params object?[] values) => writer.WriteLine(string.Join(',', values.Select(value =>
+    internal static void Csv(TextWriter writer, params object?[] values) => writer.WriteLine(string.Join(',', values.Select(value =>
     {
         var text = value is null ? "" : value is bool flag ? flag ? "true" : "false" : value is IFormattable formattable ? formattable.ToString(null, CultureInfo.InvariantCulture) : value.ToString()!;
         return text.IndexOfAny([',', '"', '\r', '\n']) >= 0 ? '"' + text.Replace("\"", "\"\"") + '"' : text;

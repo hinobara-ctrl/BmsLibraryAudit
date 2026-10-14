@@ -179,11 +179,11 @@ public sealed class PhaseTwoPreflightRunner(IPhaseTwoFileSystem? fileSystem = nu
     private static void Reject(PhaseTwoDatabase db, long component, string outcome, string reason) =>
         db.Execute("UPDATE candidate_components SET outcome=$0,reason=$1 WHERE component_id=$2 AND outcome<>'STALE_PHASE_1_CANDIDATE'", outcome, reason, component);
 
-    private IEnumerable<(PhaseTwoEntry Entry, string? Error)> Walk(IReadOnlyList<Root> roots, CancellationToken token)
+    internal static IEnumerable<(PhaseTwoEntry Entry, string? Error)> Walk(IPhaseTwoFileSystem files, IReadOnlyList<string> roots, CancellationToken token)
     {
         var stack = new Stack<IEnumerator<string>>();
-        var top = roots.Where(r => !roots.Any(o => o.Id != r.Id && PathPolicy.Contains(o.Path, r.Path))).OrderBy(r => r.Key, StringComparer.Ordinal);
-        stack.Push(top.Select(r => r.Path).GetEnumerator());
+        var top = roots.Where(r => !roots.Any(o => o != r && PathPolicy.Contains(o, r))).OrderBy(PathPolicy.Normalize, StringComparer.Ordinal);
+        stack.Push(top.GetEnumerator());
         try
         {
             while (stack.Count > 0)
@@ -239,7 +239,7 @@ public sealed class PhaseTwoPreflightRunner(IPhaseTwoFileSystem? fileSystem = nu
     private void Inventory(PhaseTwoDatabase db, long session, Root[] roots, CancellationToken token)
     {
         var batch = 0; db.Begin();
-        foreach (var (entry, error) in Walk(roots, token))
+        foreach (var (entry, error) in Walk(files, roots.Select(r => r.Path).ToArray(), token))
         {
             var existing = db.Scalar("SELECT entry_id FROM preflight_entries WHERE preflight_id=$0 AND entry_key=$1", session, entry.Key);
             long id;
@@ -279,7 +279,7 @@ public sealed class PhaseTwoPreflightRunner(IPhaseTwoFileSystem? fileSystem = nu
     {
         db.Execute("CREATE TEMP TABLE verified_entries(entry_key TEXT PRIMARY KEY)");
         var batch = 0; db.Begin();
-        foreach (var (entry, error) in Walk(roots, token))
+        foreach (var (entry, error) in Walk(files, roots.Select(r => r.Path).ToArray(), token))
         {
             var rows = db.Rows("SELECT entry_id,original_path,kind,size,mtime_ticks,attributes,extension,is_chart,inventory_status,readability,native_identity FROM preflight_entries WHERE preflight_id=$0 AND entry_key=$1", session, entry.Key).ToArray();
             db.Execute("INSERT OR IGNORE INTO verified_entries VALUES($0)", entry.Key);

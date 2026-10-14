@@ -1420,3 +1420,17 @@ chart indexes, relationships, resource handling and compatibility. Apply support
 conceptual lessons through independent code; do not copy third-party implementations
 or automatically add external database importers. External records and heuristics
 are neither current filesystem truth nor permission to delete resources.
+
+# 42. Phase 2B synthetic implementation — 2026-10-14
+
+Bounded implementation adds explicit `phase2 hash --preflight <id>
+--accept-manifest <sha256>` for sealed ADMITTED EXACT_ONLY preflight workloads.
+Fresh per-path SHA-256, complete metadata verification, physical multiplicity,
+COMPLETE/INCOMPLETE component outcomes, exact tree/multiset comparisons and
+canonical CONTENT seals are implemented and synthetically validated on Windows.
+New databases use `PREFLIGHT_AND_CONTENT` / `phase2ab-content-1`; unsupported old
+profiles are refused unchanged, with no migration or resealing. PREFLIGHT seal
+semantics and historical evidence remain intact. Real Phase 2 execution, Phase 3,
+consolidation and source mutation are not authorized by this implementation.
+See README.md for commands and temporal/memory limits; dependency extraction is
+the next separately authorized functional step toward safe consolidation.

@@ -43,8 +43,8 @@ foreach ($taskFile in $taskBefore) {
 $taskBad = Join-Path $taskRoot 'unsafe.db'
 $taskBadResult = & $DotNet $taskCli phase2 preflight --source-db $taskSource --source-scan $taskScan.ScanId --db $taskBad --output (Join-Path $taskBase 'bad-report') 2>&1
 if ($LASTEXITCODE -ne 1 -or (Test-Path -LiteralPath $taskBad)) { throw 'Unsafe destination not rejected.' }
-$taskUnsupported = & $DotNet $taskCli phase2 hash --db $taskDb 2>&1
-if ($LASTEXITCODE -ne 1 -or ($taskUnsupported -join ' ') -notmatch 'unsupported and not authorized') { throw 'Phase 2B boundary failed.' }
+$taskUnaccepted = & $DotNet $taskCli phase2 hash --db $taskDb 2>&1
+if ($LASTEXITCODE -ne 1 -or ($taskUnaccepted -join ' ') -notmatch '--preflight is required') { throw 'Explicit Phase 2B acceptance gate failed.' }
 Write-Output "Phase 2A smoke passed. Artifacts: $taskBase"
 Write-Output ($taskResult | ConvertTo-Json)
 Write-Output ($taskSummary | Select-Object selected_component_count,admitted_component_count,rejected_component_count,union_regular_file_count,
