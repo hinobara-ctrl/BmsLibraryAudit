@@ -6,6 +6,13 @@ frozen implementation contract. **Inspected baseline:**
 This intervention authorizes documentation and code inspection only. No Phase 6
 planner, CLI, executor or new evidence profile is implemented or authorized here.
 
+**Later implementation record (2026-10-15):** the owner separately authorized
+the first synthetic 6A increment from design baseline `e8db0bae8e5e33e646d4de6c81ebe3cdedd91a72`.
+See its [bounded contract and status](PHASE_6A_VIRTUAL_UNION_IMPLEMENTATION.md).
+The design below retains its original scope and future matrix; only the two-root
+physical consumer is implemented pending independent review. Phase 4 inputs are
+not enabled; per-appearance dependency obligations remain UNKNOWN. No 6B–9 authority follows.
+
 ## 1. Purpose and owner decisions
 
 The required end product remains conservative consolidation of related BMS/BMSON

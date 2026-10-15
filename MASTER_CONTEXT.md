@@ -1618,3 +1618,27 @@ construction, verification, publication and original retirement are independent
 states, never a single SafeToMerge flag. This documentation implements none of
 those future capabilities and grants no real-data access, source mutation,
 staging, commit or push. STOP for independent design review.
+
+# 53. First synthetic virtual union planner — 2026-10-15
+
+The owner separately authorized Phase 6A from the independently reviewed design
+baseline `e8db0bae8e5e33e646d4de6c81ebe3cdedd91a72`. The first two-root read-only
+planner and independent plan-accounting verifier are implemented synthetically,
+pending independent review. They admit only complete verified legacy EXACT_ONLY
+CONTENT, explicitly selected disjoint roots and all inventory/physical appearances.
+Shared relative path/type/bytes produce one virtual target with every origin;
+exclusives, distinct paths and chart contexts remain. Conflicts block affected
+paths/descendants, with source conservation accounted for exactly once per view.
+
+Plan version/digest are separate from historical seals. Source payloads are not
+opened, evidence is not modified and no target tree is created. Each chart
+appearance retains an UNKNOWN dependency obligation; optional Phase 4 reports
+are not accepted in this first increment. The verifier reconstructs source/target
+accounting from readmitted evidence, not just a matching serialized digest.
+No package/relocation proof, source-copy choice, recoverable-space promise,
+operational authority or original retirement follows. See the
+[bounded implementation contract](docs/PHASE_6A_VIRTUAL_UNION_IMPLEMENTATION.md)
+and README for commands, finite budgets, current-validator replay limits and
+synthetic validation scope. Phase 6B groups/variants, Phase 7A staging, publication
+and cleanup remain future separately authorized capabilities. No stage, commit,
+push or real-library execution is authorized. STOP for independent review.

@@ -16,6 +16,8 @@ static int Run(string[] args)
         bms-audit phase3 inspect --chart <synthetic-chart> --source-root <protected-root> --output <new-or-empty-directory>
         bms-audit phase4 resolve --db <phase2.db> --content-session <id> --accept-content-manifest <sha256> --chart-report <phase3.json> --observation-root <root-key> --output <new-or-empty-directory>
         bms-audit phase5 classify --db <phase2.db> --content-session <id> --accept-content-manifest <sha256> --component <key> [--phase4-report <json> ...] --output <new-or-empty-directory>
+        bms-audit phase6 plan --db <phase2.db> --content-session <id> --accept-content-manifest <sha256> --component <key> --root <key-A> --root <key-B> --output <new-or-empty-directory>
+        bms-audit phase6 verify --db <phase2.db> --content-session <id> --accept-content-manifest <sha256> --component <key> --root <key-A> --root <key-B> --plan <virtual_union_plan.json>
         bms-audit observation-pair capture --source-db <synthetic-audit.db> --source-scan <id> --root <a> --root <b> --db <new-pair.db> --output <new-or-empty>
         bms-audit observation-pair preflight --db <pair.db> --accept-source <source-sha256> --output <new-or-empty>
         bms-audit observation-pair hash --db <pair.db> --accept-manifest <preflight-sha256> --output <new-or-empty>
@@ -34,6 +36,7 @@ static int Run(string[] args)
         if (args[0] == "phase3") return RunPhaseThree(args, cancellation.Token);
         if (args[0] == "phase4") return RunPhaseFour(args, cancellation.Token);
         if (args[0] == "phase5") return RunPhaseFive(args, cancellation.Token);
+        if (args[0] == "phase6") return RunPhaseSix(args, cancellation.Token);
         if (args[0] == "observation-pair") return RunObservationPair(args, cancellation.Token);
         var command = args[0];
         if (command is not ("scan" or "report")) throw new ArgumentException($"Unknown command: {command}");
@@ -67,11 +70,35 @@ static int Run(string[] args)
         Console.WriteLine($"Reports: summary.json, duplicate_charts.csv, folder_candidates.csv, clusters.csv\nCandidate pairs: {analysis.Candidates.Count}; duplicate SHA-256 groups: {analysis.DuplicateGroups.Count}");
         return 0;
     }
-    catch (OperationCanceledException) { Console.Error.WriteLine(args[0] == "phase2" ? "Phase 2 operation cancelled; inspect the persisted session/export state." : args[0] == "observation-pair" ? "Observation pair operation cancelled; inspect terminal audit records. A completed acquisition may remain sealed after a cancelled export." : args[0] is "phase3" or "phase4" ? "Inspection/resolution cancelled; any partial export is not complete evidence." : "Scan cancelled; transaction rolled back."); return 130; }
-    catch (Exception exception) when (args[0] is "phase2" or "phase4" or "observation-pair" && exception is JsonException or FormatException or InvalidCastException or OverflowException)
+    catch (OperationCanceledException) { Console.Error.WriteLine(args[0] == "phase2" ? "Phase 2 operation cancelled; inspect the persisted session/export state." : args[0] == "phase6" ? "Virtual union operation cancelled; no operational authority or completed plan is implied." : args[0] == "observation-pair" ? "Observation pair operation cancelled; inspect terminal audit records. A completed acquisition may remain sealed after a cancelled export." : args[0] is "phase3" or "phase4" ? "Inspection/resolution cancelled; any partial export is not complete evidence." : "Scan cancelled; transaction rolled back."); return 130; }
+    catch (Exception exception) when (args[0] is "phase2" or "phase4" or "phase6" or "observation-pair" && exception is JsonException or FormatException or InvalidCastException or OverflowException)
     { Console.Error.WriteLine($"Error: invalid {args[0]} input/evidence: {exception.Message}"); return 1; }
     catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or IOException or UnauthorizedAccessException or SqliteException)
     { Console.Error.WriteLine($"Error: {exception.Message}"); return 1; }
+}
+
+static int RunPhaseSix(string[] args, CancellationToken token)
+{
+    if (args.Length < 2 || args[1] is not ("plan" or "verify")) throw new ArgumentException("phase6 requires plan or verify; historical virtual data only.");
+    var command = args[1]; var values = new Dictionary<string, string>(StringComparer.Ordinal); var roots = new List<string>();
+    for (var i = 2; i < args.Length; i++) {
+        var key = args[i];
+        if (++i >= args.Length || args[i].StartsWith("--", StringComparison.Ordinal)) throw new ArgumentException("Missing Phase 6A option value.");
+        if (key == "--root") { roots.Add(args[i]); continue; }
+        if (!(key is "--db" or "--content-session" or "--accept-content-manifest" or "--component" ||
+            command == "plan" && key == "--output" || command == "verify" && key == "--plan") || !values.TryAdd(key, args[i]))
+            throw new ArgumentException("Unknown/duplicate Phase 6A option: " + key);
+    }
+    string Required(string key) => values.TryGetValue(key, out var value) ? value : throw new ArgumentException(key + " is required.");
+    if (roots.Count != 2 || !long.TryParse(Required("--content-session"), out var session) || session <= 0)
+        throw new ArgumentException("Exactly two --root values and a positive CONTENT session required.");
+    var options = new PhaseSixOptions(Required("--db"), session, Required("--accept-content-manifest"), Required("--component"), roots);
+    var result = command == "plan" ? PhaseSixVirtualUnionPlanner.Plan(options, Required("--output"), token: token) : PhaseSixPlanVerifier.Verify(options, Required("--plan"), token);
+    Console.WriteLine(JsonSerializer.Serialize(new { result.Plan.PlanVersion, result.PlanSha256,
+        Roots = result.Plan.Roots.Select(r => new { r.Id, r.Key, r.OriginalPath, Appearances = r.Entries.Length }), result.Plan.Counts, result.Plan.States,
+        Report = command == "plan" ? Path.Combine(PathPolicy.Absolute(Required("--output")), "virtual_union_plan.json") : PathPolicy.Absolute(Required("--plan")),
+        Notice = "Historical virtual union only. No relocation, materialization, publication or removal authorized." }, new JsonSerializerOptions { WriteIndented = true }));
+    return result.ExitCode;
 }
 
 static int RunObservationPair(string[] args, CancellationToken token)

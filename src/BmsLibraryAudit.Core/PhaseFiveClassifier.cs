@@ -172,7 +172,7 @@ public static class PhaseFiveClassifier
         ObservedReportPublication.Publish(output, "classification_report.json", json, Validate, token, hooks);
         return result;
     }
-    private static PhaseFiveEntry[] Entries(PhaseTwoDatabase db, long session, long parent, long component, long root) => db.Rows("""
+    internal static PhaseFiveEntry[] Entries(PhaseTwoDatabase db, long session, long parent, long component, long root) => db.Rows("""
         SELECT e.entry_id,p.physical_file_id,e.entry_key,e.original_path,m.relative_path,e.kind,e.native_identity,h.sha256,e.size,e.mtime_ticks,e.attributes,e.is_chart,
           (SELECT c.sha256 FROM source_charts c WHERE c.snapshot_id=$1 AND c.normalized_path=e.entry_key AND c.present=1 AND c.status='OK')
         FROM observation_memberships m JOIN preflight_entries e ON e.preflight_id=m.preflight_id AND e.entry_id=m.entry_id

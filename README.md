@@ -9,10 +9,11 @@ It has a separate evidence profile and no Phase 4/5 adapter; see usage and limit
 at the end of this document. Broader Phase 5 and real-operation gates remain open.
 
 The [proposed chart-anchored Phase 6 design](docs/PHASE_6_CHART_ANCHORED_CONSERVATIVE_CONSOLIDATION_DESIGN.md)
-prioritizes a future two-root read-only physical union planner using verified
-legacy EXACT_ONLY CONTENT, retaining every chart appearance, auxiliary and
-conflicting distribution. Phase 6A is not implemented or authorized by this
-documentation; variant relocation, staging, publication and cleanup have separate gates.
+guides the first two-root read-only physical union planner using verified legacy
+EXACT_ONLY CONTENT. Phase 6A is `IMPLEMENTED_SYNTHETIC_PENDING_REVIEW`; its
+[bounded contract](docs/PHASE_6A_VIRTUAL_UNION_IMPLEMENTATION.md) retains every
+appearance, auxiliary and conflict. Variant relocation, staging, publication and
+cleanup remain future capabilities with separate gates.
 
 **Long-term objective:** verified fusion of related BMS/BMSON folders and removal
 of provably redundant file instances, while preserving all unique content and
@@ -135,8 +136,8 @@ remain supported. This does not establish real-source operational acceptance.
 Evidence describes stable read observations, not a simultaneous filesystem
 snapshot: metadata-preserving edits after a read can escape final checks. A hash,
 tree or multiset match grants no deletion/merge authority. OBSERVATION_ROOT is
-not PACKAGE_ROOT; semantic dependency closure, universal player resolution, plans,
-staging/publication and cleanup are not implemented. Hashing is sequential with
+not PACKAGE_ROOT; Phase 2 does not provide semantic dependency closure, universal
+player resolution, plans, staging/publication or cleanup. Hashing is sequential with
 a reused 64 KiB payload buffer; per-pair views and the existing captured chart
 analysis still use memory proportional to their scope. No real-library Phase 2B
 execution or large-scale performance acceptance is claimed.
@@ -704,3 +705,57 @@ UNKNOWN, and all dependency-closure/package-equivalence/merge/removal authority
 flags stay false. Digests anchor accepted consistency, not authenticated producer
 identity against complete replacement/resealing. This increment does not authorize
 real-library execution, semantic adapters, resource substitution, deletion or fusion.
+
+## Phase 6A: historical virtual union (synthetic, pending independent review)
+
+```powershell
+pwsh -NoLogo -NoProfile -NonInteractive -File scripts/Phase6A-Smoke-Test.ps1
+# Use only the owned synthetic evidence emitted by that smoke:
+dotnet src/BmsLibraryAudit.Cli/bin/Release/net10.0/bms-audit.dll phase6 plan `
+  --db <phase2.db> --content-session <id> --accept-content-manifest <sha256> `
+  --component <sealed-component-key> --root <sealed-root-key-A> --root <sealed-root-key-B> `
+  --output <new-or-empty-directory-outside-protected-roots>
+dotnet src/BmsLibraryAudit.Cli/bin/Release/net10.0/bms-audit.dll phase6 verify `
+  --db <phase2.db> --content-session <id> --accept-content-manifest <sha256> `
+  --component <sealed-component-key> --root <sealed-root-key-A> --root <sealed-root-key-B> `
+  --plan <virtual_union_plan.json>
+```
+
+Exactly two distinct physically disjoint roots must belong to the same admitted
+COMPLETE legacy EXACT_ONLY component. Both commands readmit CONTENT/parent/source
+seals, schema, memberships, SUCCESS hashes and reconstructed comparisons. Neither
+accepts observation-pair or Phase 4 report inputs, reopens source payloads, writes
+evidence, nor materializes a destination. Current native directory binding checks
+guard selection/exclusion; historical bytes remain historical.
+
+The deterministic `virtual_union_plan.json` records each source appearance and
+chart context, per-entry conservation, virtual entries with all contributing
+origins, full conflicts, counts and a separate versioned canonical plan digest.
+Same path/type/bytes has one virtual target; exclusives and same bytes at different
+paths remain. Byte/type/case/native conflicts block affected paths and descendants;
+both originals remain. Missing semantic reports are explicitly UNKNOWN, with one
+unknown dependency obligation per chart appearance. Package boundary and relocation
+remain unproved; no merge/removal authority, copy-source choice or savings claim.
+
+`phase6 verify` checks exact inventories/provenance and reconstructs conservation
+and target mappings independently of the planner; a recalculated digest alone
+cannot admit a changed plan. Current validator revision participates in provenance;
+this first format requires a matching declared validator revision value.
+`UNKNOWN_DIRTY` remains unknown build identity; matching it authenticates no
+executable. Cross-version replay and historical producer authentication are unproved.
+
+Exit 0: compatible historical virtual plan; 2: verified conflict plan; 1: refused
+evidence/selection, malformed plan, exceeded budget or publication error; 130:
+cancellation. CLI summaries expose counts, states, digest and report path. A
+conflict plan is not permission to unite the remaining entries operationally.
+
+Limits: 2 roots, 20,000 source entries, 20,000 virtual entries/conflicts, zero
+imported semantic reports/references, 16 MiB plan input/output, 128 MiB managed
+memory growth and 60 seconds at cooperative checkpoints after existing global
+CONTENT verification. Budgets may only be reduced through the API. Limits refuse
+without partial success; serialization/blocked I/O and preexisting global verifier
+work are not instantaneous hard bounds. Existing protected-path/native checks and
+exclusive no-overwrite report publication are reused. See the
+[Phase 6A contract](docs/PHASE_6A_VIRTUAL_UNION_IMPLEMENTATION.md) for exact digest,
+ordering, states, preservation and verification rules. Phase 6B/7A/8/9 remain
+unimplemented and separately authorized; STOP for independent review of 6A.
