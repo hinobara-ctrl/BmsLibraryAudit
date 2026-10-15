@@ -54,7 +54,7 @@ public static partial class ObservationPairObserver
         using var db = ObservationPairDatabase.Open(databasePath, true);
         if (db.Read("PREFLIGHT") is not null) throw new InvalidOperationException("BLOCKED: preflight attempt already exists; no resume.");
         var budget = new PairBudget(s.Limits, token); var start = Now(); string state = "COMPLETE";
-        PairRoot[] roots = []; PairEntry[] entries = []; var charts = new List<PairChart>(); var verified = new List<int>(); var diagnostics = new List<Diagnostic>();
+        PairRoot[] roots = []; PairEntry[] entries = []; var charts = new List<PairChart>(); var verified = new List<int>(); var diagnostics = new AcquisitionDiagnostics(s.Limits.Diagnostics);
         try {
             budget.Check(); roots = BindRoots(selection); ValidateRootBindings(roots);
             var inventory = Inventory(roots, files, s.Limits, budget, diagnostics, token); entries = inventory.Entries;
@@ -77,7 +77,7 @@ public static partial class ObservationPairObserver
             verified.AddRange(VerifyInventory(roots, entries, files, s.Limits, budget, inventory.Complete, token));
             if (inventory.Complete.Length != 2) state = "INCOMPLETE";
             hooks?.BeforeSeal?.Invoke(); budget.Check();
-        } catch (Exception ex) when (AcquisitionError(ex)) { state = Failure(ex); diagnostics.Add(DiagnosticFor(ex)); }
+        } catch (Exception ex) when (AcquisitionError(ex)) { state = Failure(ex); diagnostics.Add(DiagnosticFor(ex), terminal: true); }
         if (state != "COMPLETE" && diagnostics.Count == 0) diagnostics.Add(new("ERROR", "INVENTORY_INCOMPLETE", "", "No complete pair comparison is admitted."));
         var pf = new PairPreflight(acceptedSource, selection.UnitId, state, start, Now(), roots, entries,
             charts.OrderBy(c => c.EntryId).ToArray(), verified.Order().ToArray(), PreflightOutcomes(roots, entries, charts, verified, state), diagnostics.ToArray());
@@ -106,7 +106,7 @@ public static partial class ObservationPairObserver
         using var db = ObservationPairDatabase.Open(databasePath, true);
         if (db.Read("CONTENT") is not null) throw new InvalidOperationException("BLOCKED: content attempt already exists; no resume.");
         var budget = new PairBudget(s.Limits, token); var start = Now(); string state = "COMPLETE";
-        var reads = new List<PairRead>(); var verified = new List<int>(); var diagnostics = new List<Diagnostic>(); PairPhysicalComparison? comparison = null;
+        var reads = new List<PairRead>(); var verified = new List<int>(); var diagnostics = new AcquisitionDiagnostics(s.Limits.Diagnostics); PairPhysicalComparison? comparison = null;
         try {
             budget.Check(); VerifyInventory(pf.Roots, pf.Entries, files, s.Limits, budget, [1, 2], token);
             var buffer = new byte[65536];
@@ -123,7 +123,7 @@ public static partial class ObservationPairObserver
             if (reads.Any(r => r.Read.Status != "SUCCESS")) state = "INCOMPLETE";
             else comparison = Compare(pf, reads.ToArray(), token);
             hooks?.BeforeSeal?.Invoke(); budget.Check();
-        } catch (Exception ex) when (AcquisitionError(ex)) { state = Failure(ex); diagnostics.Add(DiagnosticFor(ex)); comparison = null; }
+        } catch (Exception ex) when (AcquisitionError(ex)) { state = Failure(ex); diagnostics.Add(DiagnosticFor(ex), terminal: true); comparison = null; }
         var content = new PairContent(acceptedPreflight, selection.UnitId, state, start, Now(), reads.ToArray(), verified.Order().ToArray(),
             ContentOutcomes(pf, reads, verified, state), comparison, diagnostics.ToArray());
         ValidateContent(pf, content, state == "COMPLETE", s.Limits, new(s.Limits, CancellationToken.None), CancellationToken.None);
@@ -158,8 +158,24 @@ public static partial class ObservationPairObserver
     }
     private static bool WithinNative(string parent, string path) => path == parent || path.StartsWith(parent.TrimEnd('\\') + "\\", StringComparison.Ordinal);
     private sealed record InventoryResult(PairEntry[] Entries, int[] Complete);
+    // The validator already reserves one extra slot. Use it only to disclose
+    // incomplete diagnostic enumeration; never let the terminal catch overflow it.
+    private sealed class AcquisitionDiagnostics(int capacity)
+    {
+        private readonly List<Diagnostic> entries = [];
+        internal int Count => entries.Count;
+        internal Diagnostic[] ToArray() => entries.ToArray();
+        internal void Add(Diagnostic diagnostic, bool terminal = false)
+        {
+            if (entries.Count < capacity) { entries.Add(diagnostic); return; }
+            if (entries.Count == capacity) entries.Add(new("ERROR", "DIAGNOSTIC_BUDGET_EXCEEDED", diagnostic.Path,
+                "Diagnostic enumeration incomplete; further diagnostics may be omitted. First omitted code: " + diagnostic.Code + "."));
+            if (terminal && diagnostic.Code != "DIAGNOSTIC_BUDGET_EXCEEDED")
+                entries[capacity] = entries[capacity] with { Message = entries[capacity].Message + " Terminal diagnostic: " + diagnostic.Code + " (" + diagnostic.Message + ")." };
+        }
+    }
     private static InventoryResult Inventory(PairRoot[] roots, IPhaseTwoContentFileSystem files, ObservationPairLimits limits,
-        PairBudget budget, List<Diagnostic> diagnostics, CancellationToken token)
+        PairBudget budget, AcquisitionDiagnostics diagnostics, CancellationToken token)
     {
         var entries = new List<PairEntry>(); var complete = new List<int>(); long total = 0; var regular = 0;
         foreach (var root in roots) {
@@ -194,7 +210,7 @@ public static partial class ObservationPairObserver
     private static int[] VerifyInventory(PairRoot[] roots, PairEntry[] entries, IPhaseTwoContentFileSystem files,
         ObservationPairLimits limits, PairBudget budget, int[] required, CancellationToken token)
     {
-        var diagnostics = new List<Diagnostic>(); var fresh = Inventory(roots, files, limits, budget, diagnostics, token);
+        var diagnostics = new AcquisitionDiagnostics(limits.Diagnostics); var fresh = Inventory(roots, files, limits, budget, diagnostics, token);
         foreach (var id in required) {
             if (!fresh.Complete.Contains(id)) throw new PairStopException("STALE", "NAMESPACE_NO_LONGER_OBSERVABLE", roots.Single(r => r.Id == id).OriginalPath);
             if (!PairJson.Equal(entries.Where(e => e.RootId == id).Select(e => e with { Id = 0 }).ToArray(), fresh.Entries.Where(e => e.RootId == id).Select(e => e with { Id = 0 }).ToArray()))

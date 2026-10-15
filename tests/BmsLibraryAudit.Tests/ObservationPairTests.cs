@@ -4,10 +4,11 @@ using System.Text.Json.Nodes;
 using BmsLibraryAudit.Core;
 using Microsoft.Data.Sqlite;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace BmsLibraryAudit.Tests;
 
-public sealed class ObservationPairTests
+public sealed class ObservationPairTests(ITestOutputHelper output)
 {
     private sealed class Fixture : IDisposable
     {
@@ -391,5 +392,173 @@ public sealed class ObservationPairTests
         var conflict = Assert.Single(PhysicalConflictAnnotations.Derive([a], [b], physical.Entries, default));
         Assert.Contains("POTENTIAL_NATIVE_ALIAS_CONFLICT", conflict.Kinds); Assert.Equal(1, conflict.RootA); Assert.Equal(2, conflict.RootB);
         Assert.Equal(7, conflict.EntryA); Assert.Equal(7, conflict.EntryB);
+    }
+    [WindowsPhaseTwoTheory]
+    [InlineData(2)] [InlineData(3)] [InlineData(5)]
+    public void DiagnosticBudgetContentOverflowPersistsIncompleteAudit(int failures)
+    {
+        using var f = new Fixture();
+        for (var i = 0; i < failures; i++) f.F.File("A", $"denied-{i}.wav", "known resource");
+        f.Capture(limits: new(Diagnostics: 1)); f.Pf(); var before = Snapshot(f.F);
+        var files = new Files { Override = FailedResourceRead };
+        var result = f.Hash(files);
+        Assert.Equal("INCOMPLETE", result.State); Assert.Equal("BLOCKED", result.PairState); Assert.Null(result.ManifestSha256);
+        var c = f.C(); Assert.Equal("INCOMPLETE", c.State); Assert.Null(c.Comparison);
+        Assert.Equal(2, c.Reads.Count(r => r.Read.Status == "ERROR")); // Stop at the first unenumerated failure.
+        Assert.Equal(2, c.Diagnostics.Length); Assert.Equal("CONTENT_READ_ERROR", c.Diagnostics[0].Code);
+        Assert.Equal("DIAGNOSTIC_BUDGET_EXCEEDED", c.Diagnostics[1].Code); Assert.Contains("incomplete", c.Diagnostics[1].Message, StringComparison.OrdinalIgnoreCase);
+        using (var db = ObservationPairDatabase.Open(f.Db)) Assert.Null(db.Read("CONTENT")!.Digest);
+        Assert.Throws<InvalidOperationException>(() => ObservationPairObserver.Verify(f.Db, "CONTENT", new string('0', 64)));
+        Assert.Equal(before, Snapshot(f.F)); AssertNoSidecars(f);
+        output.WriteLine(PairJson.Text(new { Stage = "CONTENT", FailedFixturePaths = failures, result.State, result.ManifestSha256, Audit = c }));
+    }
+    [WindowsPhaseTwoFact]
+    public void DiagnosticBudgetPreflightOverflowAndLaterFailurePersistTerminalAudit()
+    {
+        using var f = new Fixture();
+        Directory.CreateDirectory(f.F.Path("A", "denied")); Directory.CreateDirectory(f.F.Path("B", "denied"));
+        f.Capture(limits: new(Diagnostics: 1)); var before = Snapshot(f.F);
+        var files = new Files { DenyDirectory = p => p.EndsWith("denied", StringComparison.Ordinal) };
+        var result = f.Pf(files, new() { BeforeVerification = () => throw new IOException("Synthetic later acquisition failure") });
+        Assert.Equal("FAILED", result.State); Assert.Null(result.ManifestSha256);
+        var pf = f.P(); Assert.Equal(2, pf.Roots.Length); Assert.All(pf.Outcomes, o => Assert.Equal("FAILED", o.State));
+        Assert.Equal(2, pf.Diagnostics.Length); Assert.Equal("INVENTORY_INCOMPLETE", pf.Diagnostics[0].Code);
+        Assert.Equal("DIAGNOSTIC_BUDGET_EXCEEDED", pf.Diagnostics[1].Code); Assert.Contains("incomplete", pf.Diagnostics[1].Message, StringComparison.OrdinalIgnoreCase);
+        using (var db = ObservationPairDatabase.Open(f.Db)) { Assert.Null(db.Read("PREFLIGHT")!.Digest); Assert.Null(db.Read("CONTENT")); }
+        Assert.Equal(before, Snapshot(f.F)); AssertNoSidecars(f);
+        output.WriteLine(PairJson.Text(new { Stage = "PREFLIGHT", result.State, result.ManifestSha256, Audit = pf }));
+    }
+    private static PhaseTwoContentRead? FailedResourceRead(PhaseTwoEntry e) => e.OriginalPath.EndsWith(".wav", StringComparison.Ordinal)
+        ? new(e, e, null, 0, 1, "ERROR", DateTimeOffset.UtcNow.ToString("O"), DateTimeOffset.UtcNow.ToString("O")) : null;
+    private static void AssertNoSidecars(Fixture f)
+    {
+        foreach (var path in new[] { f.F.Source, f.Db }) foreach (var suffix in new[] { "-journal", "-wal", "-shm" }) Assert.False(File.Exists(path + suffix));
+    }
+    [WindowsPhaseTwoFact]
+    public void DiagnosticBudgetSingleFailureRetainsNormalAuditWithoutOverflowMarker()
+    {
+        using var f = new Fixture(); f.F.File("A", "denied.wav", "known"); f.Capture(limits: new(Diagnostics: 1)); f.Pf();
+        var before = Snapshot(f.F); var result = f.Hash(new Files { Override = FailedResourceRead });
+        Assert.Equal("INCOMPLETE", result.State); Assert.Null(result.ManifestSha256); var c = f.C(); Assert.Null(c.Comparison);
+        Assert.Equal("CONTENT_READ_ERROR", Assert.Single(c.Diagnostics).Code);
+        Assert.Equal("INCOMPLETE", c.Outcomes[0].State); Assert.Equal("COMPLETE", c.Outcomes[1].State);
+        Assert.Equal(before, Snapshot(f.F)); AssertNoSidecars(f);
+    }
+    [WindowsPhaseTwoFact]
+    public void DiagnosticBudgetValidContentRetainsOriginalPhysicalResultsAndDeterminism()
+    {
+        using var f = new Fixture(); f.F.File("A", "kick.wav", "known"); f.F.File("B", "kick.wav", "known");
+        var captured = f.Capture(limits: new(Diagnostics: 1)); var before = Snapshot(f.F);
+        Assert.Equal("COMPLETE", ObservationPairObserver.Verify(f.Db, "SOURCE", captured.ManifestSha256!).State);
+        f.Pf(); Assert.Equal("COMPLETE", ObservationPairObserver.Verify(f.Db, "PREFLIGHT", f.Preflight!).State);
+        Assert.Equal("COMPLETE", f.Hash().State); var comparison = f.C().Comparison!; Assert.Empty(f.C().Diagnostics);
+        Assert.True(comparison.TreeSubsetAInB); Assert.False(comparison.Flags[0]);
+        var digest = Convert.ToHexStringLower(SHA256.HashData("known"u8)); Assert.Contains(comparison.Groups, g => g.Digest == digest && g.CountA == 1 && g.CountB == 1);
+        ObservationPairObserver.Export(f.Db, "CONTENT", f.Content!, f.Output("repeat-low-budget"));
+        Assert.Equal(File.ReadAllBytes(Path.Combine(f.Output("content"), "observation_pair.json")), File.ReadAllBytes(Path.Combine(f.Output("repeat-low-budget"), "observation_pair.json")));
+        var second = f.Output("default-budget.db");
+        var source = ObservationPairObserver.Capture(new(f.F.Source, 1, f.F.Path("A"), f.F.Path("B"), second, f.Output("default-source")));
+        var preflight = ObservationPairObserver.Preflight(second, source.ManifestSha256!, f.Output("default-preflight"));
+        ObservationPairObserver.Hash(second, preflight.ManifestSha256!, f.Output("default-content"));
+        using (var db = ObservationPairDatabase.Open(second)) Assert.True(PairJson.Equal(comparison, PairJson.Parse<PairContent>(db.Read("CONTENT")!.Payload).Comparison));
+        Assert.Equal(before, Snapshot(f.F)); AssertNoSidecars(f);
+    }
+    [WindowsPhaseTwoTheory]
+    [InlineData(false)] [InlineData(true)]
+    public void DiagnosticBudgetPreflightKeepsEachRootsCoverage(bool bothRootsFail)
+    {
+        using var f = new Fixture();
+        foreach (var side in new[] { "A", "B" }) {
+            Directory.CreateDirectory(f.F.Path(side, "denied-1")); Directory.CreateDirectory(f.F.Path(side, "denied-2"));
+        }
+        f.Capture(limits: new(Diagnostics: 1)); var before = Snapshot(f.F);
+        var files = new Files { DenyDirectory = p => Path.GetFileName(p).StartsWith("denied", StringComparison.Ordinal) && (bothRootsFail || PathPolicy.Contains(f.F.Path("A"), p)) };
+        Assert.Equal("INCOMPLETE", f.Pf(files).State); var pf = f.P(); Assert.Null(f.Preflight);
+        Assert.Equal(2, pf.Roots.Length); Assert.Equal("INCOMPLETE", pf.Outcomes[0].State);
+        Assert.Equal(bothRootsFail ? "INCOMPLETE" : "COMPLETE", pf.Outcomes[1].State);
+        Assert.Equal(bothRootsFail ? 2 : 1, pf.Diagnostics.Length);
+        if (bothRootsFail) Assert.Equal("DIAGNOSTIC_BUDGET_EXCEEDED", pf.Diagnostics[1].Code);
+        else Assert.DoesNotContain(pf.Diagnostics, d => d.Code == "DIAGNOSTIC_BUDGET_EXCEEDED");
+        // Walk stops at the first error per root. It cannot enumerate every denied child.
+        Assert.DoesNotContain(pf.Entries, e => e.RelativePath == "denied-2" && (bothRootsFail || e.RootId == 1));
+        using (var db = ObservationPairDatabase.Open(f.Db)) { Assert.Null(db.Read("PREFLIGHT")!.Digest); Assert.Null(db.Read("CONTENT")); }
+        Assert.Equal(before, Snapshot(f.F)); AssertNoSidecars(f);
+    }
+    [WindowsPhaseTwoTheory]
+    [InlineData("STALE")] [InlineData("CANCELLED")] [InlineData("BLOCKED")]
+    public void DiagnosticBudgetExhaustionDoesNotHideLaterTerminalState(string state)
+    {
+        using var f = new Fixture(); foreach (var side in new[] { "A", "B" }) Directory.CreateDirectory(f.F.Path(side, "denied"));
+        f.Capture(limits: new(Diagnostics: 1)); var before = Snapshot(f.F);
+        var files = new Files { DenyDirectory = p => p.EndsWith("denied", StringComparison.Ordinal) };
+        var hooks = new ObservationPairObserver.Hooks { BeforeVerification = () => { if (state == "CANCELLED") throw new OperationCanceledException(); throw new PairStopException(state, "SYNTHETIC_TERMINAL_" + state); } };
+        var result = f.Pf(files, hooks); Assert.Equal(state, result.State); Assert.Null(result.ManifestSha256);
+        var pf = f.P(); Assert.All(pf.Outcomes, o => Assert.Equal(state, o.State)); Assert.Equal(2, pf.Diagnostics.Length);
+        Assert.Equal("DIAGNOSTIC_BUDGET_EXCEEDED", pf.Diagnostics[1].Code); Assert.Contains("Terminal diagnostic:", pf.Diagnostics[1].Message);
+        Assert.Equal(before, Snapshot(f.F)); AssertNoSidecars(f);
+    }
+    [WindowsPhaseTwoTheory]
+    [InlineData("PREFLIGHT")] [InlineData("CONTENT")]
+    public void DiagnosticBudgetIncompleteRecordCannotBePromotedByRecomputingACompleteSeal(string stage)
+    {
+        using var f = new Fixture();
+        if (stage == "PREFLIGHT") foreach (var side in new[] { "A", "B" }) Directory.CreateDirectory(f.F.Path(side, "denied"));
+        else { f.F.File("A", "denied-1.wav", "known-one"); f.F.File("A", "denied-2.wav", "known-two"); }
+        f.Capture(limits: new(Diagnostics: 1));
+        if (stage == "PREFLIGHT") f.Pf(new Files { DenyDirectory = p => p.EndsWith("denied", StringComparison.Ordinal) });
+        else { f.Pf(); f.Hash(new Files { Override = FailedResourceRead }); }
+        var before = Snapshot(f.F);
+        var digest = Mutate(f.Db, stage, row => {
+            var node = JsonNode.Parse(row.Payload)!; node["State"] = "COMPLETE"; var text = node.ToJsonString();
+            return row with { State = "COMPLETE", Payload = text, Digest = ObservationPairDatabase.Seal(stage, text) };
+        });
+        Assert.Throws<InvalidOperationException>(() => ObservationPairObserver.Verify(f.Db, stage, digest!));
+        Assert.Equal(before, Snapshot(f.F)); AssertNoSidecars(f);
+    }
+    [WindowsPhaseTwoFact]
+    public void DiagnosticBudgetPartialInventoryStopsWithoutInventingCompleteCoverage()
+    {
+        using var f = new Fixture(); Directory.CreateDirectory(f.F.Path("A", "denied"));
+        f.Capture(limits: new(Diagnostics: 1, Entries: 2)); var before = Snapshot(f.F);
+        var result = f.Pf(new Files { DenyDirectory = p => p.EndsWith("denied", StringComparison.Ordinal) });
+        Assert.Equal("INCOMPLETE", result.State); Assert.Null(result.ManifestSha256); var pf = f.P();
+        Assert.Equal(new[] { 1, 2 }, pf.Roots.Select(r => r.Id)); Assert.All(pf.Outcomes, r => Assert.Equal("INCOMPLETE", r.State));
+        Assert.Empty(pf.VerifiedRoots); Assert.Equal(2, pf.Diagnostics.Length);
+        Assert.Equal("DIAGNOSTIC_BUDGET_EXCEEDED", pf.Diagnostics[1].Code); Assert.Contains("INVENTORY_BUDGET_EXCEEDED", pf.Diagnostics[1].Message);
+        Assert.Equal(before, Snapshot(f.F)); AssertNoSidecars(f);
+    }
+    [WindowsPhaseTwoFact]
+    public void DiagnosticBudgetFailurePreservesParentRecordsAndIndependentSealedEvidence()
+    {
+        using var historical = new Fixture(); historical.All(); var historicalSources = Snapshot(historical.F);
+        var historicalBytes = File.ReadAllBytes(historical.Db); var historicalFacts = PhaseTwoSafety.Inspect(historical.Db);
+        using var f = new Fixture(); f.F.File("A", "denied-1.wav", "one"); f.F.File("A", "denied-2.wav", "two");
+        f.Capture(limits: new(Diagnostics: 1)); f.Pf(); var parents = ParentRecords(f); var source = Snapshot(f.F);
+        Assert.Equal("INCOMPLETE", f.Hash(new Files { Override = FailedResourceRead }).State);
+        Assert.Equal(parents, ParentRecords(f)); Assert.Equal(source, Snapshot(f.F));
+        Assert.Equal(historicalSources, Snapshot(historical.F)); Assert.Equal(historicalBytes, File.ReadAllBytes(historical.Db));
+        Assert.Equal(historicalFacts, PhaseTwoSafety.Inspect(historical.Db));
+        Assert.Equal("COMPLETE", ObservationPairObserver.Verify(historical.Db, "CONTENT", historical.Content!).State);
+        AssertNoSidecars(f); AssertNoSidecars(historical);
+    }
+    private static string ParentRecords(Fixture f)
+    {
+        using var db = ObservationPairDatabase.Open(f.Db);
+        return PairJson.Text(new[] { db.Read("SOURCE"), db.Read("SELECTION"), db.Read("PREFLIGHT") });
+    }
+    [WindowsPhaseTwoFact]
+    public void DiagnosticBudgetOverflowDoesNotForceAnAuditWriteToUnsafeEvidence()
+    {
+        using var f = new Fixture(); f.F.File("A", "denied-1.wav", "one"); f.F.File("A", "denied-2.wav", "two");
+        f.Capture(limits: new(Diagnostics: 1)); f.Pf(); var before = File.ReadAllBytes(f.Db); var source = Snapshot(f.F);
+        var alias = f.Output("unsafe-alias.db"); var linked = false;
+        try {
+            Assert.Throws<IOException>(() => f.Hash(new Files { Override = FailedResourceRead }, new() { AfterRead = _ => {
+                if (!linked) { Native("/H", alias, f.Db); linked = true; }
+            } }));
+        } finally { if (linked) File.Delete(alias); }
+        Assert.Equal(before, File.ReadAllBytes(f.Db)); Assert.Equal(source, Snapshot(f.F));
+        using (var db = ObservationPairDatabase.Open(f.Db)) Assert.Null(db.Read("CONTENT"));
+        AssertNoSidecars(f);
     }
 }
