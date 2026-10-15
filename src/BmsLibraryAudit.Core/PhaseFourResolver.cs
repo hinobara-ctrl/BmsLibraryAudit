@@ -92,7 +92,7 @@ public static class PhaseFourResolver
         if (verified.Sha256 != (string)chartRow[6]! || verified.ByteLength != Convert.ToInt64(chartRow[7]) ||
             !JsonElement.DeepEquals(document.RootElement.GetProperty("analysis"), JsonSerializer.SerializeToElement(verified, Json)))
             throw new InvalidOperationException("Phase 3 bytes or declarations disagree with reconstructed CONTENT-bound syntax.");
-        var diagnostics = new List<string>();
+
         var fileCount = db.Number("""
             SELECT count(*) FROM observation_memberships m JOIN physical_files p ON p.preflight_id=m.preflight_id AND p.entry_id=m.entry_id
             WHERE m.preflight_id=$0 AND m.observation_root_id=$1
@@ -106,9 +106,34 @@ public static class PhaseFourResolver
             ORDER BY m.relative_path_key COLLATE ORDINAL,e.entry_key COLLATE ORDINAL
             """, parent, rootId, options.ContentSessionId).Select(r => Candidate(r, rootId, componentId)).ToArray();
         var inventoryLimited = fileCount > limits.MaximumInventoryFiles;
+
+        var provenance = new PhaseFourProvenance(options.ContentSessionId, options.AcceptedContentManifestSha256, parent,
+            (string)db.Scalar("SELECT final_evidence_digest FROM sessions WHERE session_id=$0", parent)!, componentId, (string)selected[3]!, rootId,
+            options.ObservationRootKey, rootPath, capturedRoot, Path.GetDirectoryName((string)chartRow[3]!)!, null, Candidate(chartRow, rootId, componentId), verified.Sha256!,
+            (string)db.Scalar("SELECT started_utc FROM sessions WHERE session_id=$0", options.ContentSessionId)!,
+            (string)db.Scalar("SELECT completed_utc FROM sessions WHERE session_id=$0", options.ContentSessionId)!, ReportWriter.ToolVersion, PhaseTwoBuildProvenance.Current.EvidenceRevision);
+        var result = AnalyzeVerified(provenance, verified, inventory, (string)chartRow[4]!, inventoryLimited, limits, token);
+        var json = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(result, Json).Replace("\r\n", "\n", StringComparison.Ordinal) + "\n");
+        if (json.Length > limits.MaximumReportBytes) throw new InvalidOperationException("INCOMPLETE_REPORT_LIMIT: bounded result cannot be published; no complete report created.");
+        void Validate(string? temporary, bool empty)
+        {
+            if (empty) token.ThrowIfCancellationRequested();
+            if (PhaseTwoSafety.Inspect(database) != dbFacts || PhaseTwoSafety.Inspect(input) != inputFacts) throw new IOException("Input evidence binding/stamps changed.");
+            destination.Validate(temporary, empty);
+        }
+        ObservedReportPublication.Publish(output, "dependency_resolution.json", json, Validate, token, hooks);
+        return result;
+    }
+    // Pure construction shared with Phase 5 after its independent CONTENT admission.
+    // No paths, resources, database or publication are opened here.
+    internal static PhaseFourResult AnalyzeVerified(PhaseFourProvenance provenance, ChartSyntaxResult verified,
+        ObservedResourceCandidate[] inventory, string relativeChart, bool inventoryLimited, PhaseFourLimits limits, CancellationToken token)
+    {
+        ValidateLimits(limits);
+        var diagnostics = new List<string>();
         if (inventoryLimited) diagnostics.Add("INVENTORY_LIMIT: no path bindings inferred from a partial inventory.");
         var paths = new PhaseFourPaths(inventory, limits); var conditions = new PhaseFourConditions(verified, limits, token);
-        var relativeChart = PhaseFourPaths.Slashes((string)chartRow[4]!);
+        relativeChart = PhaseFourPaths.Slashes(relativeChart);
         var relativeBase = relativeChart.Contains('/') ? relativeChart[..relativeChart.LastIndexOf('/')] : "";
         // Indexed logical groups; per-declaration linkage is independently capped.
         var usageGroups = verified.Usages.Where(u => u.LogicalResourceId is not null).GroupBy(u => u.LogicalResourceId!.Value)
@@ -134,11 +159,6 @@ public static class PhaseFourResolver
         if (paths.Limited) diagnostics.Add("CANDIDATE_LIMIT: physical relation coverage incomplete.");
         if (conditions.Limited) diagnostics.Add("SYMBOLIC_LIMIT: reachability unknown; alternatives retained.");
         if (!conditions.Complete) diagnostics.Add("CONDITIONAL_UNKNOWN: unsupported/malformed evidence prevents branch reduction.");
-        var provenance = new PhaseFourProvenance(options.ContentSessionId, options.AcceptedContentManifestSha256, parent,
-            (string)db.Scalar("SELECT final_evidence_digest FROM sessions WHERE session_id=$0", parent)!, componentId, (string)selected[3]!, rootId,
-            options.ObservationRootKey, rootPath, capturedRoot, Path.GetDirectoryName((string)chartRow[3]!)!, null, Candidate(chartRow, rootId, componentId), verified.Sha256!,
-            (string)db.Scalar("SELECT started_utc FROM sessions WHERE session_id=$0", options.ContentSessionId)!,
-            (string)db.Scalar("SELECT completed_utc FROM sessions WHERE session_id=$0", options.ContentSessionId)!, ReportWriter.ToolVersion, PhaseTwoBuildProvenance.Current.EvidenceRevision);
         var resolved = resolutions.ToArray();
         var semantics = PhaseFourSemantics.Analyze(verified, resolved, paths, limits, token);
         var result = new PhaseFourResult("phase4-dependency-2", provenance, verified, resolved, usages,
@@ -149,20 +169,11 @@ public static class PhaseFourResolver
              "Phase 3 library-root native facts are unsigned hints; sealed library path membership and chart native identity/stamps/bytes are checked independently.",
              "Duplicate logical declarations and all decoding/conditional alternatives remain potential obligations; no first/last-wins or required/unused classification.",
              "Physical and semantic claims refer to a historical observation window, not a current immutable snapshot."], false, false, limits, Notice, semantics);
-        var json = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(result, Json).Replace("\r\n", "\n", StringComparison.Ordinal) + "\n");
-        if (json.Length > limits.MaximumReportBytes) throw new InvalidOperationException("INCOMPLETE_REPORT_LIMIT: bounded result cannot be published; no complete report created.");
-        void Validate(string? temporary, bool empty)
-        {
-            if (empty) token.ThrowIfCancellationRequested();
-            if (PhaseTwoSafety.Inspect(database) != dbFacts || PhaseTwoSafety.Inspect(input) != inputFacts) throw new IOException("Input evidence binding/stamps changed.");
-            destination.Validate(temporary, empty);
-        }
-        ObservedReportPublication.Publish(output, "dependency_resolution.json", json, Validate, token, hooks);
         return result;
     }
     private static ObservedResourceCandidate Candidate(object?[] row, long root, long component) => new(Convert.ToInt64(row[0]), Convert.ToInt64(row[1]), root, component,
         (string)row[2]!, (string)row[3]!, (string)row[4]!, (string)row[5]!, (string)row[6]!, Convert.ToInt64(row[7]), "SEALED_MEMBERSHIP");
-    private static void RejectDuplicateProperties(JsonElement element)
+    internal static void RejectDuplicateProperties(JsonElement element)
     {
         if (element.ValueKind == JsonValueKind.Object)
         {
@@ -182,7 +193,7 @@ public static class PhaseFourResolver
         if (!analysis.TryGetProperty("original_bytes", out var bytes) || bytes.ValueKind != JsonValueKind.String || bytes.GetString()!.Length > 4L * ((8 * 1024 * 1024 + 2) / 3))
             throw new InvalidOperationException("INCOMPLETE_CHART_BYTES: bounded original bytes are required; no source reread.");
     }
-    private static void ValidateLimits(PhaseFourLimits limits)
+    internal static void ValidateLimits(PhaseFourLimits limits)
     {
         var upper = new PhaseFourLimits();
         if (limits.MaximumReportBytes is < 1 || limits.MaximumReportBytes > upper.MaximumReportBytes ||
@@ -196,7 +207,7 @@ public static class PhaseFourResolver
             limits.MaximumSemanticCandidateLinks is < 1 || limits.MaximumSemanticCandidateLinks > upper.MaximumSemanticCandidateLinks ||
             limits.MaximumSemanticSymbolicTerms is < 1 || limits.MaximumSemanticSymbolicTerms > upper.MaximumSemanticSymbolicTerms) throw new ArgumentException("Phase 4 limits must be positive and may only reduce documented hard limits.");
     }
-    private sealed class Destination
+    internal sealed class Destination
     {
         private sealed record Binding(string Path, string Resolved, NativePathFacts? Facts);
         private readonly string output;

@@ -7,7 +7,7 @@ return Run(args);
 static int Run(string[] args)
 {
     const string usage = """
-        BmsLibraryAudit: Phase 1 and synthetic-validated Phase 2A/2B/3/4 (Windows)
+        BmsLibraryAudit: Phase 1 and synthetic-validated Phase 2A/2B/3/4/5 (Windows)
         bms-audit scan --db <audit.db> --root <path> [--root <path> ...] [--rehash-all]
         bms-audit report --db <audit.db> --output <new-or-empty-directory>
         bms-audit phase2 preflight --source-db <audit.db> --source-scan <id> --db <phase2.db> --output <new-or-empty-directory> [--component <EXACT_ONLY-id> ...]
@@ -15,6 +15,7 @@ static int Run(string[] args)
         bms-audit phase2 report --db <phase2.db> --session <id> --output <new-or-empty-directory>
         bms-audit phase3 inspect --chart <synthetic-chart> --source-root <protected-root> --output <new-or-empty-directory>
         bms-audit phase4 resolve --db <phase2.db> --content-session <id> --accept-content-manifest <sha256> --chart-report <phase3.json> --observation-root <root-key> --output <new-or-empty-directory>
+        bms-audit phase5 classify --db <phase2.db> --content-session <id> --accept-content-manifest <sha256> --component <key> [--phase4-report <json> ...] --output <new-or-empty-directory>
         CONTENT is explicit and requires an accepted completed PREFLIGHT. Real-library execution requires separate authorization.
         Outputs must be outside source libraries. Sources are only read.
         """;
@@ -27,6 +28,7 @@ static int Run(string[] args)
         if (args[0] == "phase2") return RunPhaseTwo(args, cancellation.Token);
         if (args[0] == "phase3") return RunPhaseThree(args, cancellation.Token);
         if (args[0] == "phase4") return RunPhaseFour(args, cancellation.Token);
+        if (args[0] == "phase5") return RunPhaseFive(args, cancellation.Token);
         var command = args[0];
         if (command is not ("scan" or "report")) throw new ArgumentException($"Unknown command: {command}");
         string? db = null, output = null;
@@ -64,6 +66,26 @@ static int Run(string[] args)
     { Console.Error.WriteLine($"Error: invalid {args[0]} input/evidence: {exception.Message}"); return 1; }
     catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or IOException or UnauthorizedAccessException or SqliteException)
     { Console.Error.WriteLine($"Error: {exception.Message}"); return 1; }
+}
+
+static int RunPhaseFive(string[] args, CancellationToken token)
+{
+    if (args.Length < 2 || args[1] != "classify") throw new ArgumentException("phase5 requires classify.");
+    var options = new Dictionary<string, string>(StringComparer.Ordinal); var reports = new List<string>();
+    for (var i = 2; i < args.Length; i++) {
+        var key = args[i];
+        if (key is not ("--db" or "--content-session" or "--accept-content-manifest" or "--component" or "--phase4-report" or "--output") ||
+            ++i >= args.Length || args[i].StartsWith("--", StringComparison.Ordinal)) throw new ArgumentException("Unknown/missing Phase 5 option: " + key);
+        if (key == "--phase4-report") reports.Add(args[i]);
+        else if (!options.TryAdd(key, args[i])) throw new ArgumentException("Duplicate Phase 5 option: " + key);
+    }
+    string Required(string key) => options.TryGetValue(key, out var value) ? value : throw new ArgumentException(key + " is required.");
+    if (!long.TryParse(Required("--content-session"), out var session) || session <= 0) throw new ArgumentException("Positive --content-session required.");
+    var result = PhaseFiveClassifier.Classify(new(Required("--db"), session, Required("--accept-content-manifest"), Required("--component"), Required("--output"), reports), token: token);
+    Console.WriteLine(JsonSerializer.Serialize(new { result.ResultVersion, result.Coverage, result.TotalRoots, result.ExpectedPairs,
+        ClassifiedPairs = result.Relationships.Length, result.DependencyClosureProven, result.PackageEquivalenceProven,
+        result.MergeAuthority, result.RemovalAuthority, Report = Path.Combine(PathPolicy.Absolute(Required("--output")), "classification_report.json") }, new JsonSerializerOptions { WriteIndented = true }));
+    return result.ExitCode;
 }
 
 static int RunPhaseFour(string[] args, CancellationToken token)

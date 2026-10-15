@@ -1528,3 +1528,20 @@ Unused or model-impossible declarations/candidates remain conservation obligatio
 Additive logical/physical coverage and a new semantic/proof version separate these
 claims while preserving legacy fields and historical evidence. Global closure and
 removal authority stay false; this hardening grants no Phase 5 or real-data access.
+
+# 49. Bounded Phase 5 observation classification — 2026-10-14
+
+Separately authorized synthetic Phase 5 classifies admitted EXACT_ONLY COMPLETE
+CONTENT roots, keeping chart sets, physical trees, content multiplicities,
+exclusive entries, complements, conflicts and dependencies independent. It reuses
+Phase 1 discovery from the sealed snapshot and Phase 2B comparison verification;
+cached/unobserved candidates never receive extrapolated physical conclusions.
+Unsigned Phase 4 claims require reconstruction against admitted CONTENT with the
+published graph/proof v2 contract. Missing, conflicting or unverified charts keep
+dependencies unknown without invalidating independently complete physical evidence.
+Observation roots, nested containers and packages remain distinct; package bounds
+are unknown. All alternatives, physical identities and conservation obligations
+are retained. Historical equality is not functional interchangeability, transitive
+equivalence or source freshness. No safe-union/removal authority, recoverable-space
+claim, fusion plan, executor or Phase 6 follows. Future plans need separately
+admitted scope, dependency/boundary evidence and fresh verified preservation.

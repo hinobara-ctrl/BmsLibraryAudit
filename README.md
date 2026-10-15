@@ -426,7 +426,7 @@ precedence, fallthrough models, codec usability, implicit dependencies and unive
 required/unused or dependency closure remain open and blocked. Real-data operational
 acceptance, Phase 5 and all mutations need separate authorization.
 
-The future Phase 5 consumer must keep five independent evidence levels:
+The Phase 5 consumer must keep five independent evidence levels:
 
 | Level | Existing result evidence | Meaning |
 | --- | --- | --- |
@@ -436,7 +436,7 @@ The future Phase 5 consumer must keep five independent evidence levels:
 | Bounded proof | Named models, `bounded_proof.state`, scope and blockers | Positive evidence requires a satisfiable usage; impossibility/uncertainty and limits remain explicit. |
 | Operational authority | Global flags and limitations | No demonstrated global closure, safe fusion or removal authority. |
 
-Consumption rules, applicable to the existing v2 interface without implementing Phase 5:
+Consumption rules, applicable to the existing v2 interface and Phase 5:
 
 1. `ExitCode == 0` is not proof that resources are complete.
 2. `OBSERVED_PATH_MATCH` does not prove effective resource use.
@@ -449,9 +449,9 @@ Consumption rules, applicable to the existing v2 interface without implementing 
 9. Consumers must preserve uncertainties, truncations and ambiguities.
 10. No Phase 4 result authorizes fusion or deletion.
 
-Future package comparison must evaluate each dimension independently and preserve
+Package comparison must evaluate each dimension independently and preserve
 physical identities, playback alternatives, auxiliary files and path conflicts.
-This increment provides no Phase 5 reader/classifier, recoverable-space calculation
+Phase 4 provides no package classifier, recoverable-space calculation
 or deletion list. JSON stays `phase4-dependency-2` with the same fields; the proof
 restriction is expressed by its state/blockers. Legacy compatibility is tested
 with an explicitly sanitized deserialization-only fixture derived from an owned
@@ -463,6 +463,112 @@ native identities, observation timestamps and seal-related digests are synthetic
 placeholders. The modified fixture does not establish valid CONTENT/PREFLIGHT seals
 or physical provenance. The test checks v1 field deserialization, multiplicity and
 additive defaults only; it never opens those paths or invokes a seal verifier.
+
+## Phase 5: conservative observation classification (synthetic scope)
+
+```powershell
+dotnet src/BmsLibraryAudit.Cli/bin/Release/net10.0/bms-audit.dll phase5 classify `
+  --db <owned-phase2.db> --content-session <CONTENT-id> `
+  --accept-content-manifest <accepted-CONTENT-sha256> --component <component-key> `
+  --phase4-report <root-A-chart-report.json> --phase4-report <root-B-chart-report.json> `
+  --output <new-or-empty-directory-outside-all-source-roots>
+```
+
+`--phase4-report` can occur zero or more times. Component keys come from the accepted
+CONTENT/observation-root reports. This first increment admits only captured
+EXACT_ONLY components that are ADMITTED, COMPLETE, coherent, sealed and comparison
+eligible. The database opens read-only with the existing header/schema/integrity,
+CONTENT/PREFLIGHT/source seals and comparison reconstruction. No new scan, resource
+read, schema migration, evidence reseal or observation expansion occurs.
+
+The deterministic UTF-8/LF `classification_report.json` (`phase5-conservative-classification-2`) combines the summary,
+root inventories, pair relationships, differences, content groups, conflicts,
+verified chart dependencies, diagnostics and pending discovery. Each entry retains
+relative/original paths, entry/physical IDs, native identity, SHA-256, metadata,
+chart role and captured Phase 1 SHA-256 when present. CONTENT chart identities are
+stronger than cached discovery; distinct hashes and physical counts are separate.
+Shared/nested memberships and hardlink names remain individually visible.
+
+Pair dimensions are independent: chart sets, full/non-chart trees, full/non-chart
+content multisets, directional tree inclusion, exclusive entries, conflicts and
+dependency state. The existing PhaseTwoContentComparison implementation is reused
+and its persisted counts/flags checked; no new equality engine replaces it.
+Empty directories, same-path byte/kind conflicts, case collisions and potential
+native-alias conflicts remain explicit. Accepted references annotate resource
+conflicts with chart/declaration/policy/model details; both resources are retained.
+Every verified Phase 4 result preserves syntax, alternatives, conservation
+obligations, UNKNOWNs, limits and BMSON proposals in the root dependency record.
+
+Examples (historical observations, not package conclusions):
+
+| Evidence | Independent classification |
+| --- | --- |
+| Same relative entries/types/bytes | OBSERVATION_TREE_EXACT; PACKAGE_BOUNDARY_UNKNOWN. |
+| Equal SHA-256 multiplicities under different names | CONTENT_MULTISET_EXACT_WITH_PATH_VARIANTS; no path substitution. |
+| Same charts, different non-chart files (including auxiliary TXT) | CHART_EXACT_WITH_NONCHART_DIFFERENCES; no chart-resource claim from CONTENT alone. |
+| Same charts, different kick.wav bytes with admitted compatible declaration/use bindings on both sides | CHART_EXACT_POTENTIAL_REFERENCED_RESOURCE_VARIANT and HARD_PATH_CONTENT_CONFLICT; not simulator-selected resources or a playback difference. |
+| A adds audio, B adds image, complete conflict enumeration and no detected coexistence conflict | OBSERVED_COMPLEMENTARY_CONTENT; no safe-union assertion. |
+| All A paths/types/digests occur in B, B has extra entries | OBSERVED_TREE_SUBSET_A_IN_B; no redundancy assertion. |
+
+Version 2 keeps the JSON field layout but replaces the overly broad v1
+CHART_EXACT_RESOURCE_VARIANT label with the generic physical label and a separate
+qualified potential-reference label. The latter requires matching chart/declaration/
+usage/model identities, complete admitted model/enumeration coverage, a compatible
+MAY_BIND_WITHIN_MODEL relation with covered unambiguous usage, and unique observed
+ordinal or Windows-qualified candidates on both sides whose path/hash sets differ.
+UNKNOWN, unused/model-impossible declarations and unverified/absent reports cannot
+establish that label; their candidates and uncertainties remain in the report.
+Windows matches retain their policy qualification and do not gain strict ordinal
+proof. BMSON search proposals alone do not establish it. No effective playback
+selection, interchangeability or necessity is inferred. Physical RESOURCE_VARIANT
+conflicts remain content differences, independently of any chart association.
+Complementarity is suppressed by case, kind, content or native-alias conflicts,
+including incomplete conflict enumeration, without changing trees or multisets.
+Existing v1 reports remain historical artifacts and are not rewritten; consumers
+must check result_version before interpreting the changed composite labels.
+Phase 4 result/graph/proof versions and CONTENT seals remain unchanged.
+
+Trees/multisets are `PROVEN_FROM_ACCEPTED_CONTENT`. Phase 1 relationships are
+rederived from the sealed captured snapshot with the existing analyzer; candidates
+outside the selected admitted root scope remain `CANDIDATE_FROM_PHASE1` /
+`PHYSICAL_COMPARISON_NOT_ADMITTED`, never inferred physical equality.
+Pairwise statements remain pairwise; component connectedness is not transitive
+equivalence. Multiple chart parents/nested roots can suggest a container, while
+package boundaries always remain unknown in this increment.
+
+Unsigned Phase 4 JSON is not trusted. Admission requires the exact current result,
+graph and proof versions, matching CONTENT/PREFLIGHT/component/root/chart/native
+membership, CONTENT-bound included bytes and reconstructed syntax. The shared
+pure Phase 4 constructor recomputes declarations, policies, graph, coverage and
+proof; all result fields must match. Historical v1 proofs are not accepted as v2
+ordinal evidence. Invalid/duplicate reports are unverified; missing charts are
+explicitly incomplete. Physical classifications continue independently. No single
+chart report stands for the whole root. A root is `PROVEN_WITHIN_NAMED_MODEL` only
+when every observed chart has a unique admitted report and its bounded proof is
+positive; this still excludes global closure, playback/codecs and current freshness.
+
+Exit 0 means the bounded classification/admission work completed; exit 2 retains
+limits or incomplete/unknown dependency admission, including physical-only runs
+without Phase 4. Independently proven physical dimensions remain usable in that
+report. Exit 1 refuses invalid CONTENT/component/destination or publication; 130
+is cancellation. All four authority/equivalence flags remain false. No recoverable
+space, removable-file list, fusion plan or mutating executor is generated.
+
+Hard caps (API budgets can reduce them): 32 roots, 256 pairs, 100,000 root-view
+entries and 100,000 cumulative pair-view entries, 64 Phase 4 inputs totaling 64 MiB,
+100,000 imported semantic relations, 100,000 conflict details globally, 64 MiB output,
+100,000 discovery charts/128 folders/1,024 discovery pairs. Limits leave explicit
+unclassified scope; no truncated tree/conflict enumeration is silently complete.
+Existing global CONTENT/source verification retains its scope-sized cost before
+these budgets; no million-file or real-library performance acceptance is claimed.
+Output/source/input namespace guards and shared exclusive no-overwrite publication
+are reused; they do not prove universal race freedom or destructive safety.
+
+Run `pwsh -NoLogo -NoProfile -NonInteractive -File scripts/Phase5-Smoke-Test.ps1`
+after a Release build for the owned three-root Phase 1→2A→2B→3→4→5 fixture. It checks
+known payload hashes, directional subset and independent conflicts, report
+admission, preservation with exclusive source handles and byte-identical reexport.
+Real libraries, wider observations, Phase 6 and mutations require separate authorization.
 
 The independent offline source inspector is a separate research component that
 validates supplied synthetic evidence without opening source libraries or SQLite.
