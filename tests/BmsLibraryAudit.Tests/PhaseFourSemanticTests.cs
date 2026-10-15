@@ -11,7 +11,7 @@ namespace BmsLibraryAudit.Tests;
 public sealed class PhaseFourSemanticTests
 {
     private static string Sha(string text) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
-    private static PhaseFourSemanticAnalysis Analyze(string chart, string extension = ".bms", PhaseFourLimits? limits = null, string[]? files = null)
+    internal static PhaseFourSemanticAnalysis Analyze(string chart, string extension = ".bms", PhaseFourLimits? limits = null, string[]? files = null)
     {
         limits ??= new(); var syntax = PhaseThreeParser.Parse(Encoding.UTF8.GetBytes(chart), extension);
         var inventory = (files ?? ["a.wav", "b.wav", "default.wav", "image.png"]).Select((name, index) =>

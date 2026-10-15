@@ -14,9 +14,14 @@ public sealed record ConservationObligation(int DeclarationId, string State, int
 public sealed record BmsonAudioLookup(int DeclarationId, string Policy, string State, string Trigger,
     ObservedResourceCandidate[] Candidates, bool CodecCompatibilityProven, string Notice);
 public sealed record BoundedDependencyProof(string Version, string State, string Scope, string[] Blockers);
+public sealed record LogicalReferenceCoverage(string State, int SatisfiableUsageCount, int ImpossibleUsageCount, int UnknownUsageCount);
+public sealed record PhysicalResourceBindingEvidence(int DeclarationId, string State, string PathPolicy, int CandidateCount, int BmsonSearchCandidateCount);
+public sealed record PhysicalResourceBindingCoverage(string State, int PhysicalDeclarationCount, int SatisfiableRelationCount,
+    int ObservedBindingRelationCount, int OrdinalBindingRelationCount, PhysicalResourceBindingEvidence[] Declarations);
 public sealed record PhaseFourSemanticAnalysis(string Version, string[] Models, string PhysicalEvidenceCoverage,
     string ParserCoverage, string ConditionalModelCoverage, string RelationEnumerationCoverage, string PhysicalBindingCoverage,
     string EffectiveDeclarationCoverage, long ExpectedRelationCount, DeclarationUsageRelation[] Relations,
     DeclarationCoexistence[] Coexistences, UsageDependencyEvidence[] UsageEvidence, ConservationObligation[] ConservationObligations,
     SemanticPhysicalCandidate[] PhysicalCandidates, BmsonAudioLookup[] BmsonAudioLookups,
-    BoundedDependencyProof BoundedProof, string[] Diagnostics, string[] Limitations, SymbolicConstraint[] DomainConstraints);
+    BoundedDependencyProof BoundedProof, string[] Diagnostics, string[] Limitations, SymbolicConstraint[] DomainConstraints,
+    LogicalReferenceCoverage? LogicalReferenceCoverage = null, PhysicalResourceBindingCoverage? PhysicalResourceBindingCoverage = null);

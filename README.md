@@ -316,7 +316,7 @@ error. Existing Phase 2 seal/graph/comparison verification still has its documen
 scope-sized cost; this is not million-file or universal simulator acceptance.
 The owned 400-resource/200-declaration regression verifies indexed moderate input.
 
-The additional `semantics` object (`phase4-semantic-graph-1`) preserves the original
+The additional `semantics` object (`phase4-semantic-graph-2`) preserves the original
 fields and adds explicit declaration/usage edges, individual/joint predicates,
 physical-candidate catalog IDs, coexistence conflicts, coverage witnesses and
 conservation obligations. Relations use `MAY_BIND_WITHIN_MODEL`,
@@ -345,11 +345,14 @@ region without enumerating values or products. An uncovered symbolic box is a
 checkable witness of unbound assignments. Separate pair/triple intersections
 detect declarations that coexist specifically at that usage. Enumeration, model
 coverage, effective precedence and observed physical bindings are separate fields.
-The bounded proof `observed-logical-dependency-evidence-1` can be
+The bounded proof `observed-logical-physical-ordinal-binding-evidence-2` can be
 `PROVEN_FOR_NAMED_OBSERVED_BINDING_SCOPE` only when admitted syntax has one decoding,
 at least one usage has a proven satisfiable region, all satisfiable usage assignments
-have unique declaration candidates in the named model and
-all authored paths have unique historical literal CONTENT bindings. Unknown
+have unique declaration candidates in the named model, at least one covered,
+unambiguous satisfiable declaration/usage relation binds a physical resource, and
+all authored physical paths have unique ordinal-exact historical CONTENT bindings.
+The required policy is `LEXICAL_ORDINAL`, with exactly one retained candidate and
+no truncation or Windows spelling collision. Unknown
 syntax/models, holes, ambiguous precedence, limits or unobserved paths prevent
 that proof. Only `UNCONDITIONAL_SYNTAX` and `POSSIBLE_WITHIN_MODEL` establish a
 satisfiable usage region, using the existing predicates including fixed domains;
@@ -361,6 +364,39 @@ do not block a proof when another reachable usage is covered and all other gates
 This scope expressly excludes
 playback, codecs/fallback, implicit dependencies, package closure and portability;
 `dependency_closure_proven` and `removal_authority` remain false in every result.
+
+Two optional additive coverage objects separate the claims:
+`logical_reference_coverage` records admitted logical coverage and counts of
+proven satisfiable, impossible and unknown usages. `physical_resource_binding_coverage`
+records each physical declaration's policy, candidate count, ordinal/Windows match,
+ambiguity, no-match, unknown/out-of-scope state or extension/BMSON proposal. It also
+counts satisfiable physical relations, covered unambiguous observed bindings and
+the subset with ordinal-exact bindings. These counters do not certify global
+completion independently of the model, enumeration and proof gates.
+
+| Authored chart / observed inventory | Logical coverage | Physical evidence / combined proof |
+| --- | --- | --- |
+| `#WAV01 kick.wav` plus usage / `kick.wav` | May be complete | `LEXICAL_ORDINAL`; one ordinal binding can permit PROVEN if all gates pass. |
+| `#WAV01 KICK.WAV` plus usage / `kick.wav` | May be complete | `WINDOWS_ORDINAL_IGNORE_CASE`; observed candidate/hash retained, strict ordinal proof NOT_PROVEN. |
+| Extended `#BPM01 150` plus `#00108:01` / no resource paths | May be complete | No authored physical-resource declarations or bindings; NOT_PROVEN with `NO_PHYSICAL_RESOURCE_BINDINGS_IN_SCOPE`. |
+| Reachable BPM usage and an unused/model-impossible WAV declaration | May be complete | Ordinal path observation alone is insufficient; no admitted satisfiable physical binding. Declaration/candidates remain conservation obligations. |
+
+`LEXICAL_ORDINAL` compares the admitted normalized lexical path with the stored
+relative spelling, not raw chart text byte identity. Windows-only case matches
+are successful historical correspondence under their policy; they are not changed
+to no-match. Distinct `kick.wav` / `KICK.WAV` entries remain ambiguous even when one
+spelling is ordinal-exact. Equal SHA-256 never compensates for a different name.
+Timing-only reports remain valid logical analysis, without inventing a BPM file or
+declaring the chart useless. Legacy top-level coverage/exit rules remain; a non-path
+declaration can retain legacy unsupported physical resolution/exit 2, while the
+new logical coverage is complete. NOT_PROVEN is not an operational refusal.
+
+The old `physical_binding_coverage` and `effective_declaration_coverage` strings
+retain their graph-v1 meanings for compatibility. In particular, the former accepts
+Windows matches and can be vacuous; it is not the strict new physical proof.
+Consumers must check both semantic/proof versions and the precise additive coverage.
+Older graph-v1 results deserialize with the two new objects null; absence does not
+establish the reinforced proof. No historical result is migrated or resealed.
 
 BMSON 1.0.0 sound-channel lookup is separate from literal resolution and BMS rules.
 The [BMSON specification](https://github.com/bemusic/bmson-spec/blob/master/doc/index.rst#sound-channels)

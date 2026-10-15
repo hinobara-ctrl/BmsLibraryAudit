@@ -1514,3 +1514,17 @@ Physical observation, lexical matching, semantic coverage, bounded proof and
 operational authority are independent dimensions for future consumers. Historical
 bindings grant no global closure, safe fusion or removal authority; the local
 synthetic closure does not implement Phase 5 or establish real-data acceptance.
+
+# 48. Logical coverage and ordinal physical evidence — 2026-10-14
+
+**Logical coverage is not physical binding evidence; platform-dependent lookup is
+not an ordinal-exact path proof.** Complete timing relationships cannot establish
+physical-resource presence. The reinforced named proof requires a covered,
+unambiguous satisfiable physical declaration/usage relation, with unique historical
+ordinal-exact bindings for every authored physical path and complete admitted
+coverage. Windows-only matches remain observed policy-qualified candidates;
+case collisions, missing paths, unknowns and truncations block strict proof.
+Unused or model-impossible declarations/candidates remain conservation obligations.
+Additive logical/physical coverage and a new semantic/proof version separate these
+claims while preserving legacy fields and historical evidence. Global closure and
+removal authority stay false; this hardening grants no Phase 5 or real-data access.

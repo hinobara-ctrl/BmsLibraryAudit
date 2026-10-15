@@ -1,7 +1,7 @@
 # BmsLibraryAudit — Current Roadmap
 
-**Planning revision:** 2026-10-14 (Phase 4 final synthetic semantic closure).
-**Status:** Original roadmap committed in `63f5be6fdfbe05caeef37b8c2783f11473b0599e`; the implementation-first strategy was published in `f3d6bfb028be026bb088f620ad76d76b3256c9c2`, Phase 2B in `08d2e1c9eeb1344330698e3de5d9cb5873cf0bc7`, Phase 3/Phase 2 opening correction in `f5c02dedf5920f169d000fc1f9ba962de22cc6bd`, Phase 3 corrective hardening in `e459e09fb703daec9a6ab6dfb597b23e322d7cf0`, and the first Phase 4 increment with nested-RANDOM hardening in `45e2abfb6034cfadb70216e60ac4c49b3a98c385`. The present semantic graph/coverage increment awaits independent review and authorized publication. Its named synthetic scopes are bounded; universal Phase 4 dependency closure remains open.
+**Planning revision:** 2026-10-14 (Phase 4 final proof-interface hardening).
+**Status:** Original roadmap committed in `63f5be6fdfbe05caeef37b8c2783f11473b0599e`; the implementation-first strategy was published in `f3d6bfb028be026bb088f620ad76d76b3256c9c2`, Phase 2B in `08d2e1c9eeb1344330698e3de5d9cb5873cf0bc7`, Phase 3/Phase 2 opening correction in `f5c02dedf5920f169d000fc1f9ba962de22cc6bd`, Phase 3 corrective hardening in `e459e09fb703daec9a6ab6dfb597b23e322d7cf0`, the first Phase 4 increment with nested-RANDOM hardening in `45e2abfb6034cfadb70216e60ac4c49b3a98c385`, and semantic closure with sanitized compatibility data in `6af5f31ba08a77af7974796418bb1dc719847a95`. The present final proof-interface hardening awaits independent review and authorized publication. Its named synthetic scopes are bounded; universal Phase 4 dependency closure remains open.
 **Historical planning baseline (2026-10-12):** `hinobara-ctrl/BmsLibraryAudit@7bd460503a51a63e19cf85003893f75dadd6bb54` (`main`).
 **External comparison snapshot:** `Neeted/bemusicseeker-unofficial-fork@541db4fde12d1091ce0b7c939e11dd07d435b81c` (`dev`).
 
@@ -133,9 +133,18 @@ impossible syntax, candidates and mathematical vacuous coverage remain retained.
 Mixed reachable/impossible usages can still prove the bounded scope. Unknown flow
 and exhausted relation/symbolic budgets cannot supply proof. Regression coverage
 includes the complete sealed synthetic Phase 1–4 path and a sanitized v1 JSON
-deserialization fixture, which is not valid sealed evidence. This closure is local
-and awaits independent review/publication; the
-published baseline remains `45e2abfb6034cfadb70216e60ac4c49b3a98c385`.
+deserialization fixture, which is not valid sealed evidence. That semantic closure
+was published in `6af5f31ba08a77af7974796418bb1dc719847a95`.
+
+Final interface hardening separates admitted logical coverage from physical
+path/binding coverage. Graph v2 requires at least one covered, unambiguous,
+satisfiable physical relation and unique `LEXICAL_ORDINAL` candidates for all
+authored physical paths. Windows-qualified matches retain their candidates and
+hashes but cannot establish strict ordinal proof; timing-only and unused WAV
+observations cannot substitute for an effective physical binding. Legacy fields
+and JSON v1/v2 reading remain; the reinforced semantic/proof versions and additive
+coverage objects are documented in README. This corrective increment is local,
+pending independent review/publication, without new Phase 5 or operational authority.
 
 The following remain completion/research goals, not current classifications:
 

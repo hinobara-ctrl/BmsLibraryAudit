@@ -85,6 +85,9 @@ static int RunPhaseFour(string[] args, CancellationToken token)
         SemanticRelationCoverage = result.Semantics?.RelationEnumerationCoverage,
         SemanticModelCoverage = result.Semantics?.ConditionalModelCoverage,
         BoundedDependencyEvidence = result.Semantics?.BoundedProof.State,
+        BoundedDependencyEvidenceVersion = result.Semantics?.BoundedProof.Version,
+        LogicalReferenceCoverage = result.Semantics?.LogicalReferenceCoverage?.State,
+        PhysicalResourceBindingCoverage = result.Semantics?.PhysicalResourceBindingCoverage?.State,
         Report = Path.Combine(PathPolicy.Absolute(Required("--output")), "dependency_resolution.json") }, new JsonSerializerOptions { WriteIndented = true }));
     return result.ExitCode;
 }

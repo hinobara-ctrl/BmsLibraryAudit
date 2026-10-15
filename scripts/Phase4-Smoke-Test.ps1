@@ -20,6 +20,9 @@ foreach ($taskFolder in @('A','B')) {
     [IO.File]::WriteAllText((Join-Path $taskDirectory 'fixed.bms'), "#SETRANDOM 2`n#IF 1`n#WAV01 kick.wav`n#ENDIF`n#IF 2`n#WAV01 copy.wav`n#ENDIF`n#ENDRANDOM`n#00111:01", $taskUtf8)
     [IO.File]::WriteAllText((Join-Path $taskDirectory 'switch.bms'), "#SWITCH 2`n#CASE 1`n#WAV01 kick.wav`n#SKIP`n#DEF`n#WAV01 copy.wav`n#ENDSW`n#00111:01", $taskUtf8)
     [IO.File]::WriteAllText((Join-Path $taskDirectory 'impossible.bms'), "#WAV01 kick.wav`n#RANDOM 2`n#IF 3`n#00111:01`n#ENDIF`n#ENDRANDOM", $taskUtf8)
+    [IO.File]::WriteAllText((Join-Path $taskDirectory 'windows.bms'), "#WAV01 KICK.WAV`n#00111:01", $taskUtf8)
+    [IO.File]::WriteAllText((Join-Path $taskDirectory 'timing.bms'), "#BPM01 150`n#00108:01", $taskUtf8)
+    [IO.File]::WriteAllText((Join-Path $taskDirectory 'timing-unused.bms'), "#BPM01 150`n#00108:01`n#WAV01 kick.wav", $taskUtf8)
     [IO.File]::WriteAllText((Join-Path $taskDirectory 'audio.bmson'), '{"version":"1.0.0","sound_channels":[{"name":"stem","notes":[{"x":1,"y":0,"l":0,"c":false}]}]}', $taskUtf8)
     [IO.File]::WriteAllText((Join-Path $taskDirectory 'kick.wav'), "known audio $taskFolder", $taskUtf8)
     [IO.File]::WriteAllText((Join-Path $taskDirectory 'copy.wav'), "known audio $taskFolder", $taskUtf8)
@@ -67,6 +70,18 @@ try {
     $taskRepeat = Invoke-TaskCli 0 ($taskArguments + @('--output',(Join-Path $taskBase 'repeat')))
 } finally { foreach ($taskHandle in $taskHeld) { $taskHandle.Dispose() } }
 if ((Get-FileHash -LiteralPath $taskResult.Report).Hash -ne (Get-FileHash -LiteralPath $taskRepeat.Report).Hash) { throw 'Phase 4 output is not deterministic.' }
+if ($taskResolution.semantics.version -ne 'phase4-semantic-graph-2' -or $taskResolution.semantics.bounded_proof.version -ne 'observed-logical-physical-ordinal-binding-evidence-2') { throw 'Reinforced proof contract is not versioned.' }
+foreach ($taskContract in @(@('windows.bms','windows',0,1), @('timing.bms','timing',2,0), @('timing-unused.bms','timing-unused',2,1))) {
+    $taskContractSyntax = Join-Path $taskBase ($taskContract[1] + '-syntax')
+    $null = Invoke-TaskCli 0 @('phase3','inspect','--chart',(Join-Path $taskRoot ('A\' + $taskContract[0])),'--source-root',$taskRoot,'--output',$taskContractSyntax)
+    $taskContractResult = Invoke-TaskCli $taskContract[2] @('phase4','resolve','--db',$taskDb,'--content-session',"$($taskContent.SessionId)",'--accept-content-manifest',$taskContent.ManifestSha256,'--chart-report',(Join-Path $taskContractSyntax 'chart_inspection.json'),'--observation-root',$taskRootKey,'--output',(Join-Path $taskBase $taskContract[1]))
+    $taskContractReport = Get-Content -LiteralPath $taskContractResult.Report -Raw | ConvertFrom-Json
+    $taskContractGraph = $taskContractReport.semantics
+    if ($taskContractGraph.logical_reference_coverage.state -ne 'COMPLETE_WITHIN_ADMITTED_MODEL' -or $taskContractGraph.physical_resource_binding_coverage.physical_declaration_count -ne $taskContract[3] -or $taskContractGraph.physical_resource_binding_coverage.ordinal_binding_relation_count -ne 0 -or $taskContractGraph.bounded_proof.state -ne 'NOT_PROVEN' -or $taskContractReport.dependency_closure_proven -or $taskContractReport.removal_authority) { throw 'Logical coverage promoted Windows lookup or timing to ordinal physical proof.' }
+    if ($taskContract[1] -eq 'windows') {
+        if ($taskContractGraph.physical_resource_binding_coverage.observed_binding_relation_count -ne 1 -or $taskContractReport.declarations[0].resolution_state -ne 'OBSERVED_PATH_MATCH' -or $taskContractReport.declarations[0].path_policy -ne 'WINDOWS_ORDINAL_IGNORE_CASE' -or $taskContractReport.declarations[0].candidates[0].sha256 -ne $taskExpectedSha) { throw 'Windows policy correspondence or historical hash lost.' }
+    } elseif ('NO_PHYSICAL_RESOURCE_BINDINGS_IN_SCOPE' -notin $taskContractGraph.bounded_proof.blockers) { throw 'Timing or unused physical declaration gained vacuous binding proof.' }
+}
 $taskConditionalSyntax = Join-Path $taskBase 'conditional-syntax'
 $null = Invoke-TaskCli 2 @('phase3','inspect','--chart',(Join-Path $taskRoot 'A\conditional.bms'),'--source-root',$taskRoot,'--output',$taskConditionalSyntax)
 $taskConditional = Invoke-TaskCli 2 @('phase4','resolve','--db',$taskDb,'--content-session',"$($taskContent.SessionId)",'--accept-content-manifest',$taskContent.ManifestSha256,'--chart-report',(Join-Path $taskConditionalSyntax 'chart_inspection.json'),'--observation-root',$taskRootKey,'--output',(Join-Path $taskBase 'conditional'))
@@ -85,6 +100,7 @@ foreach ($taskExtra in @(@('duplicate.bms','duplicate',2,'AMBIGUOUS_EFFECTIVE_DE
     if ($taskExtra[1] -eq 'duplicate' -and ($taskExtraGraph.bounded_proof.state -ne 'NOT_PROVEN' -or @($taskExtraGraph.conservation_obligations).Count -ne 2)) { throw 'Duplicate precedence chosen or obligation lost.' }
     if ($taskExtra[1] -eq 'fixed' -and $taskExtraGraph.bounded_proof.state -ne 'PROVEN_FOR_NAMED_OBSERVED_BINDING_SCOPE') { throw 'Fixed-value domain not proved for the scoped usage.' }
     if ($taskExtra[1] -eq 'switch' -and $taskExtraGraph.bounded_proof.state -ne 'PROVEN_FOR_NAMED_OBSERVED_BINDING_SCOPE') { throw 'Explicit-SKIP SWITCH scope not proved.' }
+    if ($taskExtra[1] -in @('fixed','switch') -and ($taskExtraGraph.physical_resource_binding_coverage.ordinal_binding_relation_count -lt 1 -or $taskExtraGraph.physical_resource_binding_coverage.state -ne 'COMPLETE_ORDINAL_OBSERVED_BINDINGS')) { throw 'Positive contract lacks a covered ordinal physical relation.' }
     if ($taskExtra[1] -eq 'impossible') {
         if ($taskExtraGraph.bounded_proof.state -ne 'NOT_PROVEN' -or 'NO_SATISFIABLE_USAGE_WITHIN_ADMITTED_MODEL' -notin $taskExtraGraph.bounded_proof.blockers -or $taskExtraGraph.usage_evidence[0].declaration_coverage -ne 'USAGE_IMPOSSIBLE_WITHIN_MODEL') { throw 'Vacuous usage coverage promoted to positive binding proof.' }
         if (@($taskExtraGraph.relations).Count -ne 1 -or $taskExtraGraph.relations[0].usage_condition.state -ne 'IMPOSSIBLE_WITHIN_MODEL' -or @($taskExtraGraph.conservation_obligations).Count -ne 1 -or $taskExtraReport.declarations[0].resolution_state -ne 'OBSERVED_PATH_MATCH' -or $taskExtraReport.declarations[0].candidates[0].sha256 -ne $taskExpectedSha) { throw 'Impossible usage or observed physical obligation lost.' }
