@@ -1,7 +1,7 @@
 # BmsLibraryAudit — Current Roadmap
 
-**Planning revision:** 2026-10-15 (accepted bounded Phase 5; approved scope research and synthetic subset increment pending review).
-**Status:** Original roadmap committed in `63f5be6fdfbe05caeef37b8c2783f11473b0599e`; the implementation-first strategy was published in `f3d6bfb028be026bb088f620ad76d76b3256c9c2`, Phase 2B in `08d2e1c9eeb1344330698e3de5d9cb5873cf0bc7`, Phase 3/Phase 2 opening correction in `f5c02dedf5920f169d000fc1f9ba962de22cc6bd`, Phase 3 corrective hardening in `e459e09fb703daec9a6ab6dfb597b23e322d7cf0`, the first Phase 4 increment with nested-RANDOM hardening in `45e2abfb6034cfadb70216e60ac4c49b3a98c385`, and semantic closure with sanitized compatibility data in `6af5f31ba08a77af7974796418bb1dc719847a95`. Final Phase 4 proof-interface hardening was published and independently reviewed in `8ae9fa94af48c3ae23b0d0bfa838f7e3d7381446`. The first bounded synthetic Phase 5 classifier was published in `e9d8e9e597cb95bf65e874ba9825efaebbf87a47`, with independent-audit hardening published in `8690aa53531dfbe6255103cc46a722b6e9f58f51`. Both increments were independently reviewed in their declared scopes: `PHASE_5_BOUNDED_SYNTHETIC_CLASSIFIER_ACCEPTED`. The separate strict-subset observer is now authorized for synthetic implementation under its frozen contract, pending independent acceptance; general overlap, universal package/dependency closure and real or destructive operations remain open or unauthorized.
+**Planning revision:** 2026-10-15 (accepted bounded Phase 5 and subset observation; proposed chart-anchored Phase 6A next, pending implementation authorization).
+**Status:** Original roadmap committed in `63f5be6fdfbe05caeef37b8c2783f11473b0599e`; the implementation-first strategy was published in `f3d6bfb028be026bb088f620ad76d76b3256c9c2`, Phase 2B in `08d2e1c9eeb1344330698e3de5d9cb5873cf0bc7`, Phase 3/Phase 2 opening correction in `f5c02dedf5920f169d000fc1f9ba962de22cc6bd`, Phase 3 corrective hardening in `e459e09fb703daec9a6ab6dfb597b23e322d7cf0`, the first Phase 4 increment with nested-RANDOM hardening in `45e2abfb6034cfadb70216e60ac4c49b3a98c385`, and semantic closure with sanitized compatibility data in `6af5f31ba08a77af7974796418bb1dc719847a95`. Final Phase 4 proof-interface hardening was published and independently reviewed in `8ae9fa94af48c3ae23b0d0bfa838f7e3d7381446`. The first bounded synthetic Phase 5 classifier was published in `e9d8e9e597cb95bf65e874ba9825efaebbf87a47`, with independent-audit hardening published in `8690aa53531dfbe6255103cc46a722b6e9f58f51`. Both increments were independently reviewed in their declared scopes: `PHASE_5_BOUNDED_SYNTHETIC_CLASSIFIER_ACCEPTED`. The separate strict-subset observer and diagnostic-budget hardening were published and independently accepted within their bounded synthetic scope at `84f1fc640d177920aed9b2ddbff8c8c0b2c08781`. This does not close all Phase 5 or add a Phase 4/5 adapter. The next proposed implementation priority is Phase 6A; only its design documentation is authorized here. General overlap, universal package/dependency closure and real or destructive operations remain open or unauthorized.
 **Historical planning baseline (2026-10-12):** `hinobara-ctrl/BmsLibraryAudit@7bd460503a51a63e19cf85003893f75dadd6bb54` (`main`).
 **External comparison snapshot:** `Neeted/bemusicseeker-unofficial-fork@541db4fde12d1091ce0b7c939e11dd07d435b81c` (`dev`).
 
@@ -47,8 +47,9 @@ Implementation, verification and real-data access are separate permissions. Unre
 | Phase 2B: accepted-manifest-bound payload hashing/comparison | Implemented with synthetic Windows validation; **no real-library execution authorized** | Explicit CONTENT command, fresh SHA-256 per required path, exact tree/multiset comparisons, immutable evidence and deterministic reports. New `PREFLIGHT_AND_CONTENT` / `phase2ab-content-1` profile; old profiles rejected unchanged without migration. Independent review remains required. |
 | Phase 3 BMS/BMSON syntactic resource extractor | Implemented with synthetic validation; explicit per-chart inspector | Mandatory declared source root, checked report publication and conservative title_image preservation. Retain byte/decoding evidence, declarations, potential usages, branches and uncertainty. No physical bindings or dependency closure. |
 | Phase 4 conservative resource resolution and semantic dependency evidence | Named synthetic scopes implemented; universal closure open | Sealed CONTENT/chart join, lexical candidates, declaration/usage intersections, coexistence conflicts, usage-domain coverage witnesses, qualified fixed-value and explicit-SKIP SWITCH models, BMSON audio-search proposals and conservation obligations. Unknown player behavior blocks broader claims; no necessity/unused/removal proof. |
-| Phase 5 conservative observation classifier | First bounded synthetic increment accepted; e9d8e9e plus published/reviewed hardening 8690aa5. Separate explicit-subset observer in synthetic implementation, pending review | Existing classifier still admits EXACT_ONLY only; the new observer has a separate frozen profile and no Phase 4/5 adapter. General wider scope, package boundaries, universal closure and mutation authority remain open. |
-| Immutable merge plans, staging, publishing and cleanup | Not implemented; no source mutation authorized | Keep as long-term mandatory objectives, explicitly distinct from any current permission. |
+| Phase 5 conservative observation classifier | First bounded synthetic increment accepted at e9d8e9e/8690aa5. Separate explicit-subset observer plus diagnostic hardening published/independently accepted in bounded synthetic scope at 84f1fc6 | Existing classifier still admits EXACT_ONLY only; the observer has a separate frozen profile and no Phase 4/5 adapter. Broader Phase 5, package boundaries, universal closure and mutation authority remain open. |
+| Phase 6A two-root virtual union planner | Design proposed; code pending and implementation authorization not granted here | Consume one verified legacy EXACT_ONLY CONTENT profile; preserve all entries/appearances and distinguish physical compatibility from relocation. |
+| Phase 6B groups/variants; Phases 7–9 staging, publishing and cleanup | Future capabilities, not implemented or authorized here | Required for the final mission, subject to separate implementation, independent verification and operational gates. |
 
 The present [`Phase 2 contract`](docs/PHASE_2_READ_ONLY_EXACT_CANDIDATE_FILESYSTEM_EVIDENCE_CONTRACT.md) intentionally admits **complete EXACT_ONLY components only**. Subsets, overlaps, resource-related candidates and container/family inference require a **subsequent separate scope contract**; do not retroactively extend an existing seal or reinterpret past evidence. The [`Scan 4 pilot readiness document`](docs/PHASE_2A_SCAN4_PILOT_OPERATIONAL_READINESS.md) is preparation, not pilot acceptance.
 
@@ -164,15 +165,16 @@ Optional Phase 4 inputs require current v2 semantic/proof reconstruction from
 CONTENT-bound bytes; missing/unverified/unknown dependencies do not erase physical
 proofs. Nested observation memberships remain scoped; container suggestions do not
 establish packages. Reports are bounded, deterministic and safely published, with
-all operational/equivalence flags false. No wider observation, fusion plan or
-mutating executor is implemented. See README for CLI, budgets and synthetic smoke.
+all operational/equivalence flags false. This classifier has no wider observation
+adapter, fusion plan or mutating executor. The separate subset observer below
+does not widen its input profile. See README for CLI, budgets and synthetic smoke.
 
 Published audit corrections preserve captured discovery diagnostics, separate declaration
 and candidate/BMSON origin policies, and mark historical resolver build claims as
 unverified independently of current semantic reconstruction. The bounded synthetic
 increment is accepted at 8690aa5; broader Phase 5 scope and real-operation gates remain open.
 
-Combine Phase 1 relations, complete Phase 2 content evidence, and Phases 3–4 dependency graph; distinguish `PACKAGE_TREE_EXACT`, `CONTENT_MULTISET_EXACT`, `CHART_EXACT_RESOURCE_VARIANT`, `CHART_SUBSET`, `SAFE_UNION_CANDIDATE`, `HARD_CONFLICT`, `MISSING_RESOURCE`, `CONTAINER_DIRECTORY`, `UNKNOWN`, etc., as **independent dimensions** and proof statuses, not a single blanket safety label. Integrate nested folder/package boundaries without treating a large collection container as one song.
+Future broader classification may combine Phase 1 relations, complete physical evidence and the Phases 3–4 dependency graph. Keep chart identity, tree equality, content multiplicity, variants, conflicts, structural scope and dependency coverage as independent dimensions. Proposed package/union labels are not current authority: physical compatibility does not establish package boundaries, relocation or safe removal. Do not treat a large collection container as one song.
 
 The existing Phase 4 interface is consumed by the bounded increment, as documented
 in README: keep physical provenance/multiplicity, lexical resolution, chart
@@ -188,24 +190,59 @@ Expand beyond `EXACT_ONLY` into directed subsets, high overlap and resource-over
 
 The [approved observation-scope research](docs/PHASE_5_OBSERVATION_SCOPE_EXPANSION_RESEARCH.md)
 was published in `e7bb15b75253834eda6321e46144abdfc238351e`. Its first explicit
-strict-subset pair observer is now in synthetic implementation, pending independent
-acceptance, under a [separate frozen contract](docs/PHASE_5_EXPLICIT_SUBSET_PAIR_OBSERVATION_CONTRACT.md).
+strict-subset pair observer and diagnostic-budget hardening were published and
+independently accepted within their bounded synthetic scope at
+`84f1fc640d177920aed9b2ddbff8c8c0b2c08781`, under a
+[separate frozen contract](docs/PHASE_5_EXPLICIT_SUBSET_PAIR_OBSERVATION_CONTRACT.md).
 It creates independent SOURCE/PREFLIGHT/CONTENT evidence for two disjoint roots;
 the historical EXACT_ONLY profile and Phase 4/5 consumers remain unchanged.
 General overlap, shared-surface batching, semantic adapters and real operation
-remain outside this increment. Synthetic implementation is not independent acceptance.
+remain outside this increment. This bounded acceptance does not close all Phase 5.
 
 **Exit gate:** independently explainable package reports for exact, subset, complement, variant and conflict cases, with explicit confidence/evidence completeness and no mutation.
 
-### Phase 6 — Immutable, verifiable fusion and redundancy plans `[RESEARCH]`
+### Phase 6 — Chart-anchored immutable union plans `[DESIGN PROPOSED; IMPLEMENTATION PENDING AUTHORIZATION]`
 
-Produce **concrete, dry-run** per-file plans, not merely ranked folder choices: target structure, each chart and resource dependency, copy/keep/reuse/rename/block actions, known byte identities, predicted reclaimed storage, non-chart auxiliary retention, source/destination mappings, conflict sets, external/parent reference obligations, atomic groups and an explicit removal-candidate list with one proof per instance. Include a plan digest, observation provenance, freshness prerequisites and deterministic human-readable/structured reports.
+The [proposed design and code-reuse matrix](docs/PHASE_6_CHART_ANCHORED_CONSERVATIVE_CONSOLIDATION_DESIGN.md)
+define the next bounded consumer. Logical chart SHA-256 and each physical
+appearance/resource context remain distinct. Chart-first conservation includes
+all observed files, opaque auxiliaries and unresolved dependencies; package
+boundaries remain unknown without independent evidence.
 
-No resource rename/rewrite that would break chart reference resolution. For same-relative-path different-byte variants, propose namespaced layouts only where chart-relative resource resolution is **proven** preserved without rewriting; otherwise block and retain both originals. Never force same-folder fusion for an irreducible conflict. Acoustically equivalent/different-encoding files are *advisory similarities*, not byte-redundant.
+**6A — next proposed implementation:** one read-only virtual union of two distinct,
+disjoint roots in a verified COMPLETE ADMITTED legacy EXACT_ONLY CONTENT component.
+Reuse existing seal/comparison verification and physical conflict annotations.
+Equal relative path/type/bytes represent one virtual target with provenance to
+all occurrences; exclusives and equal bytes under different paths remain.
+Byte/type/case/alias conflicts block affected decisions; incomplete evidence is
+UNKNOWN, never absence. Preserve chart bindings and every semantic uncertainty.
+Output a deterministic plan/accounting report outside protected/player-scanned
+roots. No source reads to fill gaps, destination materialization, removal list,
+storage-saving promise or operational permission. The subset transport has no
+adapter and is outside this first profile.
 
-**Exit gate:** human-reviewable, immutable plans that produce zero writes to source libraries and certify only decisions fully supported by their evidence. Include explicit `BLOCKED/NEEDS_REVIEW` outcomes.
+**6B — later proposed extension:** validate the complete proposed namespace for
+multiple distributions, present ambiguous main-group alternatives for human review,
+and retain conflicting distributions intact. Conditional `_variantes/001` layouts
+must preserve all charts, files, auxiliaries, relative structure and provenance.
+Parent/shared references or unproved context/player discovery changes mean
+PRESERVE_IN_PLACE / RELOCATION_NOT_PROVEN. Deterministic numbering is traceability,
+not preference. No newest/largest/most-charts selection or general package solver.
+
+**Exit gate:** independently checked source-to-virtual-target accounting and
+explainable conflict/unknown states, with separate physical, conservation and
+relocation dimensions. A plan is not a built, verified, published or retired result.
+The design and its 22-case future matrix await independent review; no planner code
+or new implementation authorization follows from this roadmap.
 
 ### Phase 7 — Safe staging, independent verifier and fault testing `[FUTURE MUTATION CAPABILITY]`
+
+**7A — first proposed materialization, separately authorized:** build only in an
+isolated disposable synthetic destination from an accepted plan and authorized
+sources. Check fresh per-file preconditions; copy each admitted shared target once
+and preserve admitted variants intact. An independent verifier checks every byte,
+path and conservation obligation, including failure/cancellation and source
+preservation. This capability is not implemented or authorized by the design.
 
 Implement an isolated mutating executor **separate from analysis**, restricted to accepted plans and disposable/test copies first. Revalidate every source precondition immediately before each operation; detect TOCTOU and interrupted inputs; copy/assemble to a separate safe staging destination; independently hash/compare all expected bytes, path trees, chart references and required content. Test nested/parent paths, long Unicode paths, hardlinks, reparse points, cross-volume moves, insufficient disk space, partial reads, cancellation and mid-run failures.
 
@@ -233,6 +270,7 @@ Implement established solutions under bounded authorization. The questions below
 
 | Priority | Research question | Smallest useful proof or experiment | Depends on |
 | --- | --- | --- | --- |
+| **Next proposed implementation — Phase 6A** | Can two admitted observation views be represented as an independently accountable virtual union? | Reuse legacy EXACT_ONLY CONTENT verification and existing physical comparator; preserve appearances, auxiliaries, conflicts and unknowns. Implement only after new authorization and design review. | [Proposed bounded design](docs/PHASE_6_CHART_ANCHORED_CONSERVATIVE_CONSOLIDATION_DESIGN.md); no universal solver or subset adapter prerequisite. |
 | **P0 — immediate safety/review** | Can Phase 2A's source-opening boundary and future pilot be accepted for their exact scopes? | WAL-header refusal and synthetic regressions are implemented; obtain independent reviewer disposition and applicable native/provenance/preservation evidence before separately authorized real discovery/pilot. | Existing Phase 2A contracts and distinct verification/real-access authorizations. |
 | **P1 — semantic scope review** | Which conditional logical references have unique observed declaration bindings? | Review Phase 4 intersections, interval coverage proofs/witnesses, coexistence ambiguity, named fixed/SWITCH subsets and BMSON proposals. Player precedence, fallthrough, codec usability, implicit resources and universal closure remain open. | Phase 2B/3/4 independent review; real execution and Phase 5 have their own gates. |
 | **P2 — parallel offline research** | What are the **conservation** gaps of modern Neeted's parsers, resolver and collision policy? | Source-to-contract matrix at pinned commit; minimal self-created fixture suite: matching MD5, colliding resource name with same size/time but different bytes, conditional unused branch, resource-only folders. No source mutation outside disposable copies. | Public documentation/code only; provenance review. |
@@ -266,18 +304,24 @@ Tests of Neeted on disposable fixtures can be an **external comparator**, but sh
 ## 7. Near-term execution sequence and decision rules
 
 1. **Implement resolved findings when authorized:** prefer small, usable corrections and functional increments with proportionate regression, preserving contracts and historical evidence. Current strategy documentation is not operational or next-phase authorization.
+   **Next proposed code priority is Phase 6A**, following independent review of
+   the chart-anchored design and separate implementation authorization. Bounded
+   subset observation is already accepted at 84f1fc6; broader Phase 5, semantic
+   adapters and real operations remain open rather than prerequisites for a
+   legacy-profile virtual union. Phases 6B, 7A, 8 and 9 retain separate gates.
 2. **Phase 2A safety and review:** the WAL pre-open correction is implemented; independently review it and resolve appropriate acquisition/provenance/preservation evidence for the operation actually proposed. Native Source Inspector gates remain in their applicable workstream. Do not promote READY_FOR_REVIEW to accepted or weaken real-pilot prerequisites.
 3. **Real pilot, when specifically approved:** current Phase 1 source/report discovery; freeze accepted EXACT_ONLY component closures; separately approve pilot, receipt verification and any full 2A run. No speculative real-source commands in this roadmap.
 4. **Phase 2B independent review:** review the implemented synthetic CONTENT flow, schema refusal, complete physical coverage, comparisons, seals and deterministic reports. Sequential reads are bounded; pair views use scope-sized memory, and no large-scale acceptance is claimed. Real execution and broader candidate scope require their own gates; pilot success grants no automatic 2B permission.
 5. **Parallel research, not parallel permission:** investigate modern Neeted gaps and independent BMS/BMSON dependency semantics using public code and **synthetic** fixtures, documenting evidence and uncertainty without modifying the source library.
 6. **Review Phase 3 and continue Phase 4 through Phase 9** through distinct gates; success is **verified fusion and cleanup**, not merely producing reports.
 
-**No authorization is implied** to stage/commit/push this document, access real source databases/folders, run a real Phase 2/3/4 pilot, implement Phase 5, modify a source library, or execute consolidation. The explicit Phase 2/3/4 implementation authorizations apply only to development and synthetic validation. Present operational gates remain in force.
+**No new authorization is implied** to stage/commit/push this document, access real source databases/folders, run a real pilot, expand Phase 5, implement Phase 6, modify a source library, or execute consolidation/staging/publication/cleanup. Existing bounded implementation and acceptance records remain valid within their own scopes. Present operational gates remain in force.
 
 ## 8. Traceable reference documents
 
 ### Own project
 
+- [`docs/PHASE_6_CHART_ANCHORED_CONSERVATIVE_CONSOLIDATION_DESIGN.md`](docs/PHASE_6_CHART_ANCHORED_CONSERVATIVE_CONSOLIDATION_DESIGN.md): proposed two-root planner, code-reuse evidence, conservation/variant policy and future acceptance matrix; not an implementation contract or authorization.
 - [`MASTER_CONTEXT.md`](MASTER_CONTEXT.md): historical mission, invariants, legacy architecture, and initial Phase 1–9 progression.
 - [`docs/PHASE_2_READ_ONLY_EXACT_CANDIDATE_FILESYSTEM_EVIDENCE_CONTRACT.md`](docs/PHASE_2_READ_ONLY_EXACT_CANDIDATE_FILESYSTEM_EVIDENCE_CONTRACT.md): governing Phase 2 observation, digest and comparison contract.
 - [`docs/PHASE_2A_IMPLEMENTATION_REPORT.md`](docs/PHASE_2A_IMPLEMENTATION_REPORT.md): implemented synthetic preflight scope and limitations.

@@ -1571,3 +1571,50 @@ comparison reuses the original pure kernel and reconstructs persisted dimensions
 Package/dependency/function/freshness remain unknown, semantics is not evaluated,
 and operational authority stays false. Review, broader observation, semantic
 integration and real-library execution require separate applicable gates.
+
+# 52. Chart-anchored conservative consolidation direction — 2026-10-15
+
+The owner adopts the following design direction without rewriting historical
+sections, phase contracts, evidence seals or dates:
+
+**Chart-anchored preservation → verified physical comparison → conflict-free union planning → intact variant preservation → independent staging verification → controlled publication → separately authorized cleanup.**
+
+Logical chart SHA-256 identity and physical appearances are distinct. Each
+appearance retains its original path, native/evidence identity, resource context,
+bindings, coverage, alternatives and unknown/external obligations. Verified syntax
+may be reusable for identical bytes under matching interpretation, but physical
+bindings remain appearance-specific. Chart-first conservation organizes the whole
+inventory; it never removes unreferenced, opaque or auxiliary files from scope.
+Observation roots and chart folders do not establish complete package boundaries.
+
+Agreed future union policy represents one virtual target for equal relative
+path/regular kind/SHA-256 with provenance to every occurrence; exclusives and
+equal bytes at different paths remain. Byte/type/case/alias conflicts block affected
+decisions. No chart appearance or original instance is retired by that accounting.
+Conflicting distributions must be preserved intact, including all charts,
+auxiliaries, relative structure and original bytes. A conditional `_variantes/001`
+layout requires relocation preservation proof; otherwise PRESERVE_IN_PLACE.
+Parent/shared resources, player discovery, reserved-name collisions and unknown
+boundaries cannot be dismissed because copied bytes match. Main-group alternatives
+require human review, without automatic newest/largest/most-charts preference.
+Connected candidate groups do not establish global union compatibility.
+
+Implemented evidence remains bounded: legacy EXACT_ONLY CONTENT comparison and
+Phase 4/5 admission exist. The independent strict-subset observer and its
+diagnostic-budget hardening were published and independently accepted within
+their synthetic scope at `84f1fc640d177920aed9b2ddbff8c8c0b2c08781`.
+It has no Phase 4/5 adapter and does not close broader Phase 5 or universal
+dependencies. Historical equality and named bounded proof confer no operational
+authority or current freshness.
+
+The [proposed Phase 6 design](docs/PHASE_6_CHART_ANCHORED_CONSERVATIVE_CONSOLIDATION_DESIGN.md)
+maps existing producers to a future 6A two-root read-only virtual union using one
+admitted legacy profile. This is the next proposed implementation priority, not
+implementation authorization. Phase 6B groups/intact variants and separately
+authorized Phase 7A disposable staging follow; independent verification, Phase 8
+controlled publication and Phase 9 separately authorized cleanup remain mandatory
+for the final mission. Physical compatibility, conservation, relocation,
+construction, verification, publication and original retirement are independent
+states, never a single SafeToMerge flag. This documentation implements none of
+those future capabilities and grants no real-data access, source mutation,
+staging, commit or push. STOP for independent design review.

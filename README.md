@@ -2,9 +2,17 @@
 
 Independent, conservative BMS library auditor.
 
-The separately authorized **synthetic explicit-subset pair observer** is in
-implementation pending independent review. It has a separate evidence profile;
-see the usage and limits at the end of this document.
+The separately authorized **synthetic explicit-subset pair observer** and its
+diagnostic-budget hardening were published and independently accepted within
+their bounded synthetic scope at `84f1fc640d177920aed9b2ddbff8c8c0b2c08781`.
+It has a separate evidence profile and no Phase 4/5 adapter; see usage and limits
+at the end of this document. Broader Phase 5 and real-operation gates remain open.
+
+The [proposed chart-anchored Phase 6 design](docs/PHASE_6_CHART_ANCHORED_CONSERVATIVE_CONSOLIDATION_DESIGN.md)
+prioritizes a future two-root read-only physical union planner using verified
+legacy EXACT_ONLY CONTENT, retaining every chart appearance, auxiliary and
+conflicting distribution. Phase 6A is not implemented or authorized by this
+documentation; variant relocation, staging, publication and cleanup have separate gates.
 
 **Long-term objective:** verified fusion of related BMS/BMSON folders and removal
 of provably redundant file instances, while preserving all unique content and
@@ -630,8 +638,10 @@ offline acceptance grants no real-source or Phase 2A execution authorization.
 `observation-pair` creates profile `explicit-subset-pair-1` / contract
 `observation-pair-1` in a **new, independent DB**. Its
 [frozen contract](docs/PHASE_5_EXPLICIT_SUBSET_PAIR_OBSERVATION_CONTRACT.md) governs
-the implementation pending independent acceptance. Start with the reproducible
-synthetic fixture:
+the implementation. The observer and diagnostic-budget hardening were published
+and independently accepted in their bounded synthetic scope at
+`84f1fc640d177920aed9b2ddbff8c8c0b2c08781`; this does not close all Phase 5 or
+add a Phase 4/5 adapter. Start with the reproducible synthetic fixture:
 
 ```powershell
 pwsh -NoLogo -NoProfile -NonInteractive -File scripts/Observation-Pair-Smoke-Test.ps1
