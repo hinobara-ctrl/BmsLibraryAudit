@@ -1,7 +1,7 @@
 # BmsLibraryAudit — Current Roadmap
 
-**Planning revision:** 2026-10-15 (accepted bounded Phase 5; observation-scope research).
-**Status:** Original roadmap committed in `63f5be6fdfbe05caeef37b8c2783f11473b0599e`; the implementation-first strategy was published in `f3d6bfb028be026bb088f620ad76d76b3256c9c2`, Phase 2B in `08d2e1c9eeb1344330698e3de5d9cb5873cf0bc7`, Phase 3/Phase 2 opening correction in `f5c02dedf5920f169d000fc1f9ba962de22cc6bd`, Phase 3 corrective hardening in `e459e09fb703daec9a6ab6dfb597b23e322d7cf0`, the first Phase 4 increment with nested-RANDOM hardening in `45e2abfb6034cfadb70216e60ac4c49b3a98c385`, and semantic closure with sanitized compatibility data in `6af5f31ba08a77af7974796418bb1dc719847a95`. Final Phase 4 proof-interface hardening was published and independently reviewed in `8ae9fa94af48c3ae23b0d0bfa838f7e3d7381446`. The first bounded synthetic Phase 5 classifier was published in `e9d8e9e597cb95bf65e874ba9825efaebbf87a47`, with independent-audit hardening published in `8690aa53531dfbe6255103cc46a722b6e9f58f51`. Both increments were independently reviewed in their declared scopes: `PHASE_5_BOUNDED_SYNTHETIC_CLASSIFIER_ACCEPTED`. Wider observation remains research requiring a separate contract and implementation authorization; universal package/dependency closure and real or destructive operations remain unproved/unauthorized.
+**Planning revision:** 2026-10-15 (accepted bounded Phase 5; approved scope research and synthetic subset increment pending review).
+**Status:** Original roadmap committed in `63f5be6fdfbe05caeef37b8c2783f11473b0599e`; the implementation-first strategy was published in `f3d6bfb028be026bb088f620ad76d76b3256c9c2`, Phase 2B in `08d2e1c9eeb1344330698e3de5d9cb5873cf0bc7`, Phase 3/Phase 2 opening correction in `f5c02dedf5920f169d000fc1f9ba962de22cc6bd`, Phase 3 corrective hardening in `e459e09fb703daec9a6ab6dfb597b23e322d7cf0`, the first Phase 4 increment with nested-RANDOM hardening in `45e2abfb6034cfadb70216e60ac4c49b3a98c385`, and semantic closure with sanitized compatibility data in `6af5f31ba08a77af7974796418bb1dc719847a95`. Final Phase 4 proof-interface hardening was published and independently reviewed in `8ae9fa94af48c3ae23b0d0bfa838f7e3d7381446`. The first bounded synthetic Phase 5 classifier was published in `e9d8e9e597cb95bf65e874ba9825efaebbf87a47`, with independent-audit hardening published in `8690aa53531dfbe6255103cc46a722b6e9f58f51`. Both increments were independently reviewed in their declared scopes: `PHASE_5_BOUNDED_SYNTHETIC_CLASSIFIER_ACCEPTED`. The separate strict-subset observer is now authorized for synthetic implementation under its frozen contract, pending independent acceptance; general overlap, universal package/dependency closure and real or destructive operations remain open or unauthorized.
 **Historical planning baseline (2026-10-12):** `hinobara-ctrl/BmsLibraryAudit@7bd460503a51a63e19cf85003893f75dadd6bb54` (`main`).
 **External comparison snapshot:** `Neeted/bemusicseeker-unofficial-fork@541db4fde12d1091ce0b7c939e11dd07d435b81c` (`dev`).
 
@@ -47,7 +47,7 @@ Implementation, verification and real-data access are separate permissions. Unre
 | Phase 2B: accepted-manifest-bound payload hashing/comparison | Implemented with synthetic Windows validation; **no real-library execution authorized** | Explicit CONTENT command, fresh SHA-256 per required path, exact tree/multiset comparisons, immutable evidence and deterministic reports. New `PREFLIGHT_AND_CONTENT` / `phase2ab-content-1` profile; old profiles rejected unchanged without migration. Independent review remains required. |
 | Phase 3 BMS/BMSON syntactic resource extractor | Implemented with synthetic validation; explicit per-chart inspector | Mandatory declared source root, checked report publication and conservative title_image preservation. Retain byte/decoding evidence, declarations, potential usages, branches and uncertainty. No physical bindings or dependency closure. |
 | Phase 4 conservative resource resolution and semantic dependency evidence | Named synthetic scopes implemented; universal closure open | Sealed CONTENT/chart join, lexical candidates, declaration/usage intersections, coexistence conflicts, usage-domain coverage witnesses, qualified fixed-value and explicit-SKIP SWITCH models, BMSON audio-search proposals and conservation obligations. Unknown player behavior blocks broader claims; no necessity/unused/removal proof. |
-| Phase 5 conservative observation classifier | First bounded synthetic increment accepted; e9d8e9e plus published/reviewed hardening 8690aa5 | ADMITTED EXACT_ONLY COMPLETE CONTENT only; wider observation in research. Package boundaries, universal closure and mutation authority remain unproved. |
+| Phase 5 conservative observation classifier | First bounded synthetic increment accepted; e9d8e9e plus published/reviewed hardening 8690aa5. Separate explicit-subset observer in synthetic implementation, pending review | Existing classifier still admits EXACT_ONLY only; the new observer has a separate frozen profile and no Phase 4/5 adapter. General wider scope, package boundaries, universal closure and mutation authority remain open. |
 | Immutable merge plans, staging, publishing and cleanup | Not implemented; no source mutation authorized | Keep as long-term mandatory objectives, explicitly distinct from any current permission. |
 
 The present [`Phase 2 contract`](docs/PHASE_2_READ_ONLY_EXACT_CANDIDATE_FILESYSTEM_EVIDENCE_CONTRACT.md) intentionally admits **complete EXACT_ONLY components only**. Subsets, overlaps, resource-related candidates and container/family inference require a **subsequent separate scope contract**; do not retroactively extend an existing seal or reinterpret past evidence. The [`Scan 4 pilot readiness document`](docs/PHASE_2A_SCAN4_PILOT_OPERATIONAL_READINESS.md) is preparation, not pilot acceptance.
@@ -186,10 +186,14 @@ freshness, real-library operations and separately verified destructive safety.
 
 Expand beyond `EXACT_ONLY` into directed subsets, high overlap and resource-overlap **only via a new bounded/authorized observation and comparison contract**. External similarity/Jaccard suggestions may rank candidate work; they never certify equivalence.
 
-The [observation-scope research proposal](docs/PHASE_5_OBSERVATION_SCOPE_EXPANSION_RESEARCH.md)
-recommends an explicit synthetic subset pair in a separate evidence profile as the
-first future increment, with shared-surface batching deferred. The proposal is
-pending independent review and authorized publication; no new scope is admitted or implemented.
+The [approved observation-scope research](docs/PHASE_5_OBSERVATION_SCOPE_EXPANSION_RESEARCH.md)
+was published in `e7bb15b75253834eda6321e46144abdfc238351e`. Its first explicit
+strict-subset pair observer is now in synthetic implementation, pending independent
+acceptance, under a [separate frozen contract](docs/PHASE_5_EXPLICIT_SUBSET_PAIR_OBSERVATION_CONTRACT.md).
+It creates independent SOURCE/PREFLIGHT/CONTENT evidence for two disjoint roots;
+the historical EXACT_ONLY profile and Phase 4/5 consumers remain unchanged.
+General overlap, shared-surface batching, semantic adapters and real operation
+remain outside this increment. Synthetic implementation is not independent acceptance.
 
 **Exit gate:** independently explainable package reports for exact, subset, complement, variant and conflict cases, with explicit confidence/evidence completeness and no mutation.
 

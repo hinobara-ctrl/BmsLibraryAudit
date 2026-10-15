@@ -16,6 +16,11 @@ static int Run(string[] args)
         bms-audit phase3 inspect --chart <synthetic-chart> --source-root <protected-root> --output <new-or-empty-directory>
         bms-audit phase4 resolve --db <phase2.db> --content-session <id> --accept-content-manifest <sha256> --chart-report <phase3.json> --observation-root <root-key> --output <new-or-empty-directory>
         bms-audit phase5 classify --db <phase2.db> --content-session <id> --accept-content-manifest <sha256> --component <key> [--phase4-report <json> ...] --output <new-or-empty-directory>
+        bms-audit observation-pair capture --source-db <synthetic-audit.db> --source-scan <id> --root <a> --root <b> --db <new-pair.db> --output <new-or-empty>
+        bms-audit observation-pair preflight --db <pair.db> --accept-source <source-sha256> --output <new-or-empty>
+        bms-audit observation-pair hash --db <pair.db> --accept-manifest <preflight-sha256> --output <new-or-empty>
+        bms-audit observation-pair verify --db <pair.db> --stage <SOURCE|PREFLIGHT|CONTENT> --accept-manifest <sha256>
+        bms-audit observation-pair report --db <pair.db> --stage <SOURCE|PREFLIGHT|CONTENT> --accept-manifest <sha256> --output <new-or-empty>
         CONTENT is explicit and requires an accepted completed PREFLIGHT. Real-library execution requires separate authorization.
         Outputs must be outside source libraries. Sources are only read.
         """;
@@ -29,6 +34,7 @@ static int Run(string[] args)
         if (args[0] == "phase3") return RunPhaseThree(args, cancellation.Token);
         if (args[0] == "phase4") return RunPhaseFour(args, cancellation.Token);
         if (args[0] == "phase5") return RunPhaseFive(args, cancellation.Token);
+        if (args[0] == "observation-pair") return RunObservationPair(args, cancellation.Token);
         var command = args[0];
         if (command is not ("scan" or "report")) throw new ArgumentException($"Unknown command: {command}");
         string? db = null, output = null;
@@ -61,11 +67,38 @@ static int Run(string[] args)
         Console.WriteLine($"Reports: summary.json, duplicate_charts.csv, folder_candidates.csv, clusters.csv\nCandidate pairs: {analysis.Candidates.Count}; duplicate SHA-256 groups: {analysis.DuplicateGroups.Count}");
         return 0;
     }
-    catch (OperationCanceledException) { Console.Error.WriteLine(args[0] == "phase2" ? "Phase 2 operation cancelled; inspect the persisted session/export state." : args[0] is "phase3" or "phase4" ? "Inspection/resolution cancelled; any partial export is not complete evidence." : "Scan cancelled; transaction rolled back."); return 130; }
-    catch (Exception exception) when (args[0] is "phase2" or "phase4" && exception is JsonException or FormatException or InvalidCastException or OverflowException)
+    catch (OperationCanceledException) { Console.Error.WriteLine(args[0] == "phase2" ? "Phase 2 operation cancelled; inspect the persisted session/export state." : args[0] == "observation-pair" ? "Observation pair operation cancelled; inspect terminal audit records. A completed acquisition may remain sealed after a cancelled export." : args[0] is "phase3" or "phase4" ? "Inspection/resolution cancelled; any partial export is not complete evidence." : "Scan cancelled; transaction rolled back."); return 130; }
+    catch (Exception exception) when (args[0] is "phase2" or "phase4" or "observation-pair" && exception is JsonException or FormatException or InvalidCastException or OverflowException)
     { Console.Error.WriteLine($"Error: invalid {args[0]} input/evidence: {exception.Message}"); return 1; }
     catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or IOException or UnauthorizedAccessException or SqliteException)
     { Console.Error.WriteLine($"Error: {exception.Message}"); return 1; }
+}
+
+static int RunObservationPair(string[] args, CancellationToken token)
+{
+    if (args.Length < 2 || args[1] is not ("capture" or "preflight" or "hash" or "verify" or "report"))
+        throw new ArgumentException("observation-pair requires capture, preflight, hash, verify or report.");
+    var command = args[1]; var values = new Dictionary<string, string>(StringComparer.Ordinal); var roots = new List<string>();
+    for (var i = 2; i < args.Length; i++) {
+        var key = args[i];
+        if (++i >= args.Length || args[i].StartsWith("--", StringComparison.Ordinal)) throw new ArgumentException("Missing observation-pair option value.");
+        if (key == "--root" && command == "capture") { roots.Add(args[i]); continue; }
+        var valid = key == "--db" || command != "verify" && key == "--output" || command == "capture" && key is "--source-db" or "--source-scan" ||
+            command == "preflight" && key == "--accept-source" || command is "hash" or "verify" or "report" && key == "--accept-manifest" || command is "verify" or "report" && key == "--stage";
+        if (!valid || !values.TryAdd(key, args[i])) throw new ArgumentException("Unknown/duplicate observation-pair option: " + key);
+    }
+    string Required(string key) => values.TryGetValue(key, out var v) ? v : throw new ArgumentException(key + " is required.");
+    ObservationPairResult result;
+    if (command == "capture") {
+        if (roots.Count != 2 || !long.TryParse(Required("--source-scan"), out var scan) || scan < 1) throw new ArgumentException("Capture requires exactly two --root values and a positive --source-scan.");
+        result = ObservationPairObserver.Capture(new(Required("--source-db"), scan, roots[0], roots[1], Required("--db"), Required("--output")), token: token);
+    } else result = command switch {
+        "preflight" => ObservationPairObserver.Preflight(Required("--db"), Required("--accept-source"), Required("--output"), token),
+        "hash" => ObservationPairObserver.Hash(Required("--db"), Required("--accept-manifest"), Required("--output"), token),
+        "verify" => ObservationPairObserver.Verify(Required("--db"), Required("--stage"), Required("--accept-manifest"), token),
+        _ => ObservationPairObserver.Export(Required("--db"), Required("--stage"), Required("--accept-manifest"), Required("--output"), token)
+    };
+    Console.WriteLine(JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true })); return result.ExitCode;
 }
 
 static int RunPhaseFive(string[] args, CancellationToken token)

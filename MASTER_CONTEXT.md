@@ -1557,3 +1557,17 @@ distinct; proposals do not establish codec usability or effective playback.
 Reconstructed semantic evidence is not historical producer-build authentication.
 The resolver revision is declared and unverified absent an independent anchor;
 the current validator build and sealed CONTENT/PREFLIGHT provenance remain separate.
+
+# 51. Independent explicit subset observation — 2026-10-15
+
+The separately authorized synthetic subset observer uses a new evidence profile
+and separate SOURCE/PREFLIGHT/CONTENT domains. A direct Phase 1 strict-subset edge
+selects two disjoint roots; complete recursive chart revalidation and fresh reads
+of every regular path establish independent physical observations. Direct discovery
+sets, recursive memberships, hardlink names/native objects, physical trees and
+content multiplicity remain distinct. Legacy EXACT_ONLY evidence is never widened
+or migrated; existing Phase 4/5 consumers reject this new transport. Physical
+comparison reuses the original pure kernel and reconstructs persisted dimensions.
+Package/dependency/function/freshness remain unknown, semantics is not evaluated,
+and operational authority stays false. Review, broader observation, semantic
+integration and real-library execution require separate applicable gates.

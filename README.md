@@ -2,6 +2,10 @@
 
 Independent, conservative BMS library auditor.
 
+The separately authorized **synthetic explicit-subset pair observer** is in
+implementation pending independent review. It has a separate evidence profile;
+see the usage and limits at the end of this document.
+
 **Long-term objective:** verified fusion of related BMS/BMSON folders and removal
 of provably redundant file instances, while preserving all unique content and
 required chart-resource relationships. This is not a general library manager.
@@ -620,3 +624,73 @@ validates supplied synthetic evidence without opening source libraries or SQLite
 Its [consolidated closure](docs/PHASE_2A_SOURCE_INSPECTOR_OFFLINE_CLOSURE.md) is
 ready for final independent review. Native verification remains incomplete;
 offline acceptance grants no real-source or Phase 2A execution authorization.
+
+## Synthetic explicit subset pair observation
+
+`observation-pair` creates profile `explicit-subset-pair-1` / contract
+`observation-pair-1` in a **new, independent DB**. Its
+[frozen contract](docs/PHASE_5_EXPLICIT_SUBSET_PAIR_OBSERVATION_CONTRACT.md) governs
+the implementation pending independent acceptance. Start with the reproducible
+synthetic fixture:
+
+```powershell
+pwsh -NoLogo -NoProfile -NonInteractive -File scripts/Observation-Pair-Smoke-Test.ps1
+```
+
+For an already generated **synthetic** Phase 1 source, the explicit flow is:
+
+```powershell
+$cli = 'src/BmsLibraryAudit.Cli/bin/Release/net10.0/bms-audit.dll'
+$capture = dotnet $cli observation-pair capture --source-db C:\Synthetic\audit.db --source-scan 1 --root C:\Synthetic\library\A --root C:\Synthetic\library\B --db C:\Synthetic\pair.db --output C:\Synthetic\source-report | ConvertFrom-Json
+$preflight = dotnet $cli observation-pair preflight --db C:\Synthetic\pair.db --accept-source $capture.ManifestSha256 --output C:\Synthetic\preflight-report | ConvertFrom-Json
+$content = dotnet $cli observation-pair hash --db C:\Synthetic\pair.db --accept-manifest $preflight.ManifestSha256 --output C:\Synthetic\content-report | ConvertFrom-Json
+dotnet $cli observation-pair verify --db C:\Synthetic\pair.db --stage CONTENT --accept-manifest $content.ManifestSha256
+dotnet $cli observation-pair report --db C:\Synthetic\pair.db --stage CONTENT --accept-manifest $content.ManifestSha256 --output C:\Synthetic\repeat-report
+```
+
+Capture requires exactly two disjoint, non-aliased direct-chart folders and the
+latest completed source scan. RelationshipAnalyzer must reproduce a strict
+`A_SUBSET_OF_B` or `B_SUBSET_OF_A` from the same captured charts and diagnostics.
+Exact/overlap/disjoint/resource-only/transitively inferred selections are refused.
+Reversing `--root` order preserves UnitId/PairId and canonical subset direction.
+Recursive coverage diagnostics block the affected pair; unrelated source diagnostics
+remain visible as incomplete global coverage without erasing a complete pair.
+
+SOURCE seals the protected source capture, version and limits. PREFLIGHT seals
+the selected roots, complete recursive metadata inventory, fresh chart SHA-256
+reads and memberships, including exclusive/nested/BMSON/duplicate charts.
+Non-chart readability remains NOT_TESTED. CONTENT explicitly accepts that exact
+PREFLIGHT digest and freshly reads every regular path, including hardlink names,
+auxiliaries and unknown files. Namespace/stamp/identity drift is STALE; stable
+resource read failure makes the affected root INCOMPLETE and prevents any positive
+pair comparison. Cancellation and operational failures retain terminal audit
+records without successful digests. Attempts cannot resume or reseal.
+
+Every stage exports `observation_pair.json`. Successful `verify`/`report` commands
+require the exact supplied successful digest and reconstruct historical evidence,
+root outcomes and comparisons; they do not reopen original charts/resources.
+Reports retain direct discovery separately from recursive chart copies, all path
+entries/native identities/hashes, ordinal differences, FULL/NON_CHART digest
+multisets, directional tree inclusion and path/type/case/native-alias conflicts.
+Chart subset alone never establishes physical inclusion. The shared exact kernel
+is unchanged. Same sealed evidence reexports byte-identically without a new
+timestamp. A publication failure leaves sealed evidence intact for a separate
+export to a new destination; no existing report or foreign temporary is replaced.
+
+Provisional synthetic caps: 2 roots/1 pair; source DB 64 MiB, 512 source charts,
+128 direct folders and 1024 diagnostics; 512 recursive charts, 8192 entries,
+4096 regular paths, depth 32; 256 MiB/file, 1 GiB expected payload and 2 GiB attempted
+bytes per stage, at most two unchanged-stamp read attempts/path; 300 seconds and
+256 MiB managed-memory growth at cooperative checkpoints; 16 MiB/stage payload,
+64 MiB/evidence DB, 32 MiB/report. API limits can only reduce these positive caps.
+Limits refuse or explicitly make coverage incomplete; they never sample or skip
+integrity verification. Serialization/checkpoints are not instantaneous memory,
+blocked-I/O or real-library performance guarantees.
+
+Both DB profiles reject each other. Historical Phase 2 seals, admission and CLI
+are unchanged; `phase4 resolve` and `phase5 classify` do not consume the new profile.
+Semantic evidence is NOT_EVALUATED, package boundary and current freshness are
+UNKNOWN, and all dependency-closure/package-equivalence/merge/removal authority
+flags stay false. Digests anchor accepted consistency, not authenticated producer
+identity against complete replacement/resealing. This increment does not authorize
+real-library execution, semantic adapters, resource substitution, deletion or fusion.

@@ -29,26 +29,10 @@ internal static class PhaseFiveClassification
             if (conflicts.Count == limits.MaximumConflicts) { truncated = true; return; }
             conflicts.Add(new(path, kinds, x, y, Refs(x).Concat(Refs(y)).ToArray()));
         }
-        foreach (var d in differences)
-        {
-            token.ThrowIfCancellationRequested();
-            if (d.Category == "CONTENT_CONFLICT") Conflict(d.RelativePath,
-                d.EntryA!.IsChart != d.EntryB!.IsChart ? ["SAME_RELATIVE_PATH_DIFFERENT_BYTES", "CHART_RESOURCE_PATH_CONFLICT"]
-                : !d.EntryA.IsChart ? ["SAME_RELATIVE_PATH_DIFFERENT_BYTES", "RESOURCE_VARIANT"] : ["SAME_RELATIVE_PATH_DIFFERENT_BYTES"], d.EntryA, d.EntryB);
-            if (d.Category == "KIND_CONFLICT") Conflict(d.RelativePath, ["FILE_DIRECTORY_KIND_CONFLICT"], d.EntryA, d.EntryB);
-        }
-        foreach (var group in a.Entries.Concat(b.Entries).GroupBy(e => e.RelativePath, StringComparer.OrdinalIgnoreCase))
-        {
-            token.ThrowIfCancellationRequested();
-            if (group.Select(e => e.RelativePath).Distinct(StringComparer.Ordinal).Skip(1).Any()) {
-                var entries = group.OrderBy(e => e.ObservationRootId).ThenBy(e => e.RelativePath, StringComparer.Ordinal).ToArray();
-                Conflict(group.Key, ["CASE_COLLISION"], entries[0], entries.First(e => e.RelativePath != entries[0].RelativePath));
-            }
-        }
-        foreach (var group in a.Entries.Concat(b.Entries).Where(e => e.Kind == "REGULAR_FILE" && e.NativeIdentity is not null).GroupBy(e => e.NativeIdentity, StringComparer.Ordinal))
-            if (group.Select(e => e.Sha256).Distinct(StringComparer.Ordinal).Skip(1).Any()) {
-                var entries = group.ToArray(); Conflict(entries[0].RelativePath, ["POTENTIAL_NATIVE_ALIAS_CONFLICT"], entries[0], entries.First(e => e.Sha256 != entries[0].Sha256));
-            }
+        PhysicalPath Physical(PhaseFiveEntry e) => new(e.EntryId, e.ObservationRootId, e.RelativePath, e.Kind, e.Sha256, e.NativeIdentity, e.IsChart);
+        var physicalEntries = a.Entries.Concat(b.Entries).ToDictionary(e => (e.ObservationRootId, e.EntryId));
+        foreach (var c in PhysicalConflictAnnotations.Derive(a.Entries.Select(Physical).ToArray(), b.Entries.Select(Physical).ToArray(), comparison.Entries, token))
+            Conflict(c.RelativePath, c.Kinds, c.EntryA is long x ? physicalEntries[(c.RootA!.Value, x)] : null, c.EntryB is long y ? physicalEntries[(c.RootB!.Value, y)] : null);
         var labels = new List<string>();
         if (comparison.Flags[0]) labels.Add("OBSERVATION_TREE_EXACT");
         if (comparison.Flags[1] && !comparison.Flags[0]) labels.Add("CONTENT_MULTISET_EXACT_WITH_PATH_VARIANTS");
