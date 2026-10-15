@@ -127,14 +127,21 @@ internal static class PhaseFiveClassification
                 token.ThrowIfCancellationRequested(); var original = declarations[declaration.DeclarationId];
                 var relation = relations[declaration.DeclarationId].FirstOrDefault();
                 var condition = relation?.DeclarationCondition ?? declaration.Reachability;
-                var reference = new PhaseFiveReference(root.Id, chart.ChartEntryId, chart.ChartSha256, declaration.DeclarationId, original.LogicalId, declaration.WrittenPath,
-                    declaration.PathPolicy, condition.Model, condition.State, relations[declaration.DeclarationId].Select(r => r.UsageId).ToArray());
-                foreach (var candidate in declaration.Candidates.Concat(proposals.GetValueOrDefault(declaration.DeclarationId) ?? []).DistinctBy(c => c.EntryId)) {
+                var sources = declaration.Candidates.Select(c => (Candidate: c, Origin: "DECLARATION_RESOLUTION"))
+                    .Concat((proposals.GetValueOrDefault(declaration.DeclarationId) ?? []).Select(c => (Candidate: c, Origin: "BMSON_AUDIO_LOOKUP_PROPOSAL")));
+                foreach (var source in sources.Distinct().OrderBy(s => s.Candidate.RelativePath, StringComparer.Ordinal)
+                    .ThenBy(s => s.Candidate.EntryId).ThenBy(s => s.Candidate.MatchPolicy, StringComparer.Ordinal).ThenBy(s => s.Origin, StringComparer.Ordinal)) {
+                    var candidate = source.Candidate;
+                    var reference = new PhaseFiveReference(root.Id, chart.ChartEntryId, chart.ChartSha256, declaration.DeclarationId, original.LogicalId, declaration.WrittenPath,
+                        declaration.PathPolicy, condition.Model, condition.State, relations[declaration.DeclarationId].Select(r => r.UsageId).Order().ToArray(),
+                        candidate.MatchPolicy, source.Origin, candidate.EntryId, candidate.RelativePath);
                     if (!index.TryGetValue(candidate.EntryId, out var refs)) index.Add(candidate.EntryId, refs = []);
                     refs.Add(reference);
                 }
             }
         }
-        return index.ToDictionary(p => p.Key, p => p.Value.ToArray());
+        return index.OrderBy(p => p.Key).ToDictionary(p => p.Key, p => p.Value.OrderBy(r => r.ChartEntryId).ThenBy(r => r.DeclarationId)
+            .ThenBy(r => r.PathPolicy, StringComparer.Ordinal).ThenBy(r => r.CandidateMatchPolicy, StringComparer.Ordinal)
+            .ThenBy(r => r.CandidateOrigin, StringComparer.Ordinal).ToArray());
     }
 }

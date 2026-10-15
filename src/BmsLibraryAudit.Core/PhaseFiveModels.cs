@@ -10,7 +10,8 @@ public sealed record PhaseFiveEntry(long EntryId, long? PhysicalFileId, long Obs
     string EntryKey, string OriginalPath, string RelativePath, string Kind, string? NativeIdentity, string? Sha256,
     long? Size, long? MtimeTicks, long? Attributes, bool IsChart, string? CapturedPhaseOneSha256);
 public sealed record PhaseFiveDependency(long RootId, long ChartEntryId, string ChartSha256, string Admission,
-    string Trust, string[] Diagnostics, string? ReportSha256, PhaseFourResult? VerifiedReport);
+    string Trust, string[] Diagnostics, string? ReportSha256, PhaseFourResult? VerifiedReport,
+    string? ResolverBuildRevisionState = null);
 public sealed record PhaseFiveRoot(long Id, string Key, string OriginalPath, string[] LibraryRoots,
     string[] ChartParents, long[] NestedRootIds, string StructuralState, string PackageBoundary,
     string PhysicalEvidenceState, string SemanticCoverage, string SemanticTrust,
@@ -20,7 +21,9 @@ public sealed record PhaseFiveChartRelation(string State, string Trust, int Phys
 public sealed record PhaseFiveDifference(string RelativePath, string Category, PhaseFiveEntry? EntryA, PhaseFiveEntry? EntryB);
 public sealed record PhaseFiveContentGroup(string Projection, string Sha256, long CountA, long CountB, bool DifferentPaths);
 public sealed record PhaseFiveReference(long RootId, long ChartEntryId, string ChartSha256, int DeclarationId,
-    string? LogicalId, string? WrittenPath, string PathPolicy, string Model, string Reachability, int[] UsageIds);
+    string? LogicalId, string? WrittenPath, string PathPolicy, string Model, string Reachability, int[] UsageIds,
+    string? CandidateMatchPolicy = null, string? CandidateOrigin = null, long? CandidateEntryId = null,
+    string? CandidateRelativePath = null);
 public sealed record PhaseFiveConflict(string RelativePath, string[] Types, PhaseFiveEntry? EntryA, PhaseFiveEntry? EntryB,
     PhaseFiveReference[] References);
 public sealed record PhaseFivePair(long RootA, long RootB, string Trust, PhaseFiveChartRelation Charts,

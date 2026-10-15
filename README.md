@@ -536,6 +536,18 @@ Pairwise statements remain pairwise; component connectedness is not transitive
 equivalence. Multiple chart parents/nested roots can suggest a container, while
 package boundaries always remain unknown in this increment.
 
+Pending discovery reuses charts **and captured diagnostics from the same admitted
+snapshot**. Historical inaccessible/skipped/error coverage excludes affected folders
+through the unchanged Phase 1 analyzer. Exclusion leaves relationships UNKNOWN,
+not proven absent, and does not invalidate independent admitted CONTENT pairs.
+Conflict references keep `path_policy` as the declaration policy and additionally
+retain `candidate_match_policy`, `candidate_origin`, `candidate_entry_id` and
+`candidate_relative_path`. DECLARATION_RESOLUTION and BMSON_AUDIO_LOOKUP_PROPOSAL
+remain separate even for the same entry. BMSON search/unknown-codec policies are
+potential observations, never literal selection, codec equivalence or playback.
+These optional additive fields keep the v2 contract; absent fields in earlier
+reports mean unknown candidate provenance, not inherited literal policy.
+
 Unsigned Phase 4 JSON is not trusted. Admission requires the exact current result,
 graph and proof versions, matching CONTENT/PREFLIGHT/component/root/chart/native
 membership, CONTENT-bound included bytes and reconstructed syntax. The shared
@@ -546,6 +558,16 @@ explicitly incomplete. Physical classifications continue independently. No singl
 chart report stands for the whole root. A root is `PROVEN_WITHIN_NAMED_MODEL` only
 when every observed chart has a unique admitted report and its bounded proof is
 positive; this still excludes global closure, playback/codecs and current freshness.
+
+`ADMITTED_RECONSTRUCTED_PHASE4` authenticates no historical producer executable.
+The included `resolver_build_revision` remains a historical declaration, with
+`resolver_build_revision_state = DECLARED_UNVERIFIED_BUILD_REVISION` on admitted
+chart records. No existing seal independently anchors the later resolver's build.
+A different or edited revision string can therefore remain semantically reproducible;
+matching CONTENT or the current build does not authenticate it. Sealed membership,
+digests and reconstructed syntax/graph/proof retain their existing checks. The
+Phase 5 `provenance.build_revision` describes the current validator build separately.
+The new state is additive; its absence does not establish historical authenticity.
 
 Exit 0 means the bounded classification/admission work completed; exit 2 retains
 limits or incomplete/unknown dependency admission, including physical-only runs

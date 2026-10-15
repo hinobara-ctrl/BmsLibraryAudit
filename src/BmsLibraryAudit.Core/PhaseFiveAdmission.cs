@@ -5,6 +5,7 @@ namespace BmsLibraryAudit.Core;
 
 internal static class PhaseFiveAdmission
 {
+    internal const string ResolverBuildRevisionState = "DECLARED_UNVERIFIED_BUILD_REVISION";
     internal static PhaseFourResult Verify(PhaseFourResult report, PhaseFiveProvenance accepted,
         PhaseFiveRoot root, string libraryRoot, CancellationToken token)
     {
@@ -35,6 +36,9 @@ internal static class PhaseFiveAdmission
         var count = root.Entries.Count(e => e.Kind == "REGULAR_FILE");
         var limited = count > report.Limits.MaximumInventoryFiles;
         var inventory = limited ? [] : root.Entries.Where(e => e.Kind == "REGULAR_FILE").Select(Candidate).ToArray();
+        // CONTENT seals bind the historical inventory, not the later Phase 4
+        // producer executable. ResolverBuildRevision remains a declared hint;
+        // reusing it here does not authenticate it or require a current-build match.
         var expected = PhaseFourResolver.AnalyzeVerified(p, syntax, inventory, chart.RelativePath, limited, report.Limits, token);
         if (!Equal(expected, report)) throw new InvalidOperationException("Phase 4 declarations, graph, coverage, models or proof do not reproduce.");
         return expected;

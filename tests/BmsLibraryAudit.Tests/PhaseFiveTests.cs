@@ -21,7 +21,7 @@ public sealed class PhaseFiveTests
             else F.Pair(bytes: chart);
             if (resources) { F.File("A", "kick.wav", "known kick"); F.File("B", "kick.wav", "known kick"); }
         }
-        public void Seal() { F.Scan(); var p = F.Run(); Content = new PhaseTwoContentRunner().Run(new(F.Db, p.SessionId, p.ManifestSha256, Path.Combine(F.Base, "content"))); }
+        public void Seal(Action? afterScan = null) { F.Scan(); afterScan?.Invoke(); var p = F.Run(); Content = new PhaseTwoContentRunner().Run(new(F.Db, p.SessionId, p.ManifestSha256, Path.Combine(F.Base, "content"))); }
         public string Report(string root, string name = "one.BMS", PhaseFourLimits? limits = null) {
             var label = "chart-" + reports++; var syntax = Path.Combine(F.Base, label + "-syntax"); var output = Path.Combine(F.Base, label + "-resolved");
             PhaseThreeInspector.Inspect(F.Path(root, name), F.Root, syntax);
@@ -34,6 +34,12 @@ public sealed class PhaseFiveTests
         public void Dispose() => F.Dispose();
     }
     private static string Sha(string text) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
+    private static void CapturedDiagnostic(Fixture f, long scan, string code, string path)
+    {
+        using var db = AuditDatabase.Open(f.Source, true);
+        db.Execute("INSERT INTO diagnostics(scan_id,severity,code,path,message) VALUES($scan,'WARNING',$code,$path,'Synthetic historical coverage limitation')",
+            ("$scan", scan), ("$code", code), ("$path", path));
+    }
     private static void NoAuthority(PhaseFiveResult r) {
         Assert.False(r.DependencyClosureProven); Assert.False(r.PackageEquivalenceProven); Assert.False(r.MergeAuthority); Assert.False(r.RemovalAuthority);
         Assert.All(r.Roots, x => Assert.Equal("PACKAGE_BOUNDARY_UNKNOWN",x.PackageBoundary));
@@ -194,6 +200,110 @@ public sealed class PhaseFiveTests
         Assert.Equal(2,r.Roots.Length); Assert.True(Assert.Single(r.Relationships).ObservedTreeExact); NoAuthority(r);
     }
     [WindowsPhaseTwoTheory]
+    [InlineData("none")][InlineData("DIRECTORY_UNREADABLE")][InlineData("REPARSE_SKIPPED")]
+    [InlineData("ENTRY_METADATA")][InlineData("CHART_READ")][InlineData("CHART_UNSTABLE")]
+    public void DiscoveryUsesCapturedDiagnosticsWithoutChangingContent(string code)
+    {
+        using var e = new Evidence();
+        foreach (var folder in new[] { "C", "D" }) { e.F.File(folder, "one.BMS", "#TITLE physical fixture"); e.F.File(folder, "extra.BMS", "#TITLE " + folder); }
+        var diagnosticPath = code is "ENTRY_METADATA" or "CHART_READ" or "CHART_UNSTABLE" ? e.F.Path("C", "unobserved.BMS") : e.F.Path("C");
+        e.Seal(() => { if (code != "none") CapturedDiagnostic(e.F, 1, code, diagnosticPath); });
+        var dbBytes = System.IO.File.ReadAllBytes(e.F.Db); var sourceBytes = System.IO.File.ReadAllBytes(e.F.Source);
+        var r = e.Run();
+        Assert.Equal(code == "none", r.PendingDiscoveries.Any(d => d.FolderA == e.F.Path("C") || d.FolderB == e.F.Path("C")));
+        Assert.Contains(r.PendingDiscoveries, d => d.FolderA == e.F.Path("D") || d.FolderB == e.F.Path("D"));
+        Assert.Equal(2, e.F.Number("SELECT count(*) FROM source_charts WHERE snapshot_id=$0 AND parent_folder=$1", r.Provenance.ParentPreflightId, e.F.Path("C")));
+        Assert.Equal(code == "none" ? 0 : 1, e.F.Number("SELECT count(*) FROM source_diagnostics WHERE snapshot_id=$0", r.Provenance.ParentPreflightId));
+        if (code != "none") Assert.Contains(r.Diagnostics, d => d.StartsWith("PHASE1_DISCOVERY_INCOMPLETE:", StringComparison.Ordinal) && d.Contains(e.F.Path("C"), StringComparison.Ordinal) && d.Contains("UNKNOWN", StringComparison.Ordinal));
+        Assert.True(Assert.Single(r.Relationships).ObservedTreeExact);
+        Assert.All(r.PendingDiscoveries, d => Assert.Equal("PHYSICAL_COMPARISON_NOT_ADMITTED", d.PhysicalComparisonState));
+        Assert.Equal(dbBytes, System.IO.File.ReadAllBytes(e.F.Db)); Assert.Equal(sourceBytes, System.IO.File.ReadAllBytes(e.F.Source)); NoAuthority(r);
+    }
+    [WindowsPhaseTwoFact]
+    public void DiscoveryDoesNotMixDiagnosticsFromDifferentSealedSnapshots()
+    {
+        using var f = new Fixture(); f.Pair();
+        foreach (var folder in new[] { "C", "D" }) { f.File(folder, "one.BMS", "xxxx"); f.File(folder, "extra.BMS", folder); }
+        f.Scan(); CapturedDiagnostic(f, 1, "DIRECTORY_UNREADABLE", f.Path("C")); var first = f.Run();
+        f.Scan(); CapturedDiagnostic(f, 2, "REPARSE_SKIPPED", f.Path("D")); var second = f.Run(sourceScan: 2, output: Path.Combine(f.Base, "preflight-two"));
+        var beforeSource = System.IO.File.ReadAllBytes(f.Source);
+        foreach (var (preflight, excluded, complete) in new[] { (first, "C", "D"), (second, "D", "C") }) {
+            var content = new PhaseTwoContentRunner().Run(new(f.Db, preflight.SessionId, preflight.ManifestSha256, Path.Combine(f.Base, "content-" + preflight.SessionId)));
+            var component = (string)f.Rows("SELECT component_key FROM candidate_components WHERE preflight_id=$0", preflight.SessionId).Single()[0]!;
+            var before = System.IO.File.ReadAllBytes(f.Db);
+            var r = PhaseFiveClassifier.Classify(new(f.Db, content.SessionId, content.ManifestSha256, component, Path.Combine(f.Base, "classified-" + preflight.SessionId)));
+            Assert.Equal(preflight.SessionId, r.Provenance.ParentPreflightId);
+            Assert.DoesNotContain(r.PendingDiscoveries, d => d.FolderA == f.Path(excluded) || d.FolderB == f.Path(excluded));
+            Assert.Contains(r.PendingDiscoveries, d => d.FolderA == f.Path(complete) || d.FolderB == f.Path(complete));
+            Assert.True(Assert.Single(r.Relationships).ObservedTreeExact); Assert.Equal(before, System.IO.File.ReadAllBytes(f.Db)); NoAuthority(r);
+        }
+        Assert.Equal(2, f.Number("SELECT count(*) FROM source_snapshots WHERE seal_flag=1"));
+        Assert.Equal(beforeSource, System.IO.File.ReadAllBytes(f.Source));
+    }
+    [WindowsPhaseTwoTheory]
+    [InlineData("literal")][InlineData("windows")][InlineData("shared")][InlineData("unknown-codec")][InlineData("no-report")]
+    public void BmsonConflictReferencesPreserveEveryCandidatePolicyAndOrigin(string kind)
+    {
+        const string channel = "{\"name\":\"stem.wav\",\"notes\":[{\"x\":1,\"y\":0,\"l\":0,\"c\":false}]}";
+        var chart = "{\"version\":\"1.0.0\",\"sound_channels\":[" + channel + (kind == "shared" ? "," + channel : "") + "]}";
+        using var e = new Evidence(chart); var literal = kind == "windows" ? "STEM.WAV" : "stem.wav";
+        var alternative = kind == "unknown-codec" ? "stem.custom" : "stem.ogg";
+        foreach (var root in new[] { "A", "B" }) { e.F.File(root, literal, "same literal"); e.F.File(root, alternative, "alternative " + root); }
+        e.Seal(); var reports = kind == "no-report" ? [] : new[] { e.Report("A", "one.bmson"), e.Report("B", "one.bmson") };
+        var r = e.Run(reports: reports); var conflict = Assert.Single(Assert.Single(r.Relationships).Conflicts);
+        Assert.Equal(alternative, conflict.RelativePath); Assert.NotEqual(conflict.EntryA!.Sha256, conflict.EntryB!.Sha256);
+        var declarations = kind == "shared" ? 2 : 1;
+        Assert.Equal(kind == "no-report" ? 0 : 2 * declarations, conflict.References.Length);
+        foreach (var root in r.Roots) {
+            var index = PhaseFiveClassification.ReferenceIndex(root, CancellationToken.None);
+            if (kind == "no-report") { Assert.Empty(index); continue; }
+            var entry = root.Entries.Single(x => x.RelativePath == literal); var refs = index[entry.EntryId];
+            Assert.Equal(2 * declarations, refs.Length);
+            Assert.Equal(declarations, refs.Select(x => x.DeclarationId).Distinct().Count());
+            Assert.Contains(refs, x => x.CandidateOrigin == "DECLARATION_RESOLUTION" && x.CandidateMatchPolicy == (kind == "windows" ? "WINDOWS_ORDINAL_IGNORE_CASE" : "LEXICAL_ORDINAL"));
+            Assert.Contains(refs, x => x.CandidateOrigin == "BMSON_AUDIO_LOOKUP_PROPOSAL" && x.CandidateMatchPolicy == "BMSON_RECOMMENDED_FORMAT_SEARCH_POTENTIAL");
+            Assert.All(refs, x => { Assert.Equal(entry.EntryId, x.CandidateEntryId); Assert.Equal(literal, x.CandidateRelativePath); Assert.Equal(root.Id, x.RootId); Assert.Equal(Sha(chart), x.ChartSha256); });
+            Assert.All(Assert.Single(root.Dependencies).VerifiedReport!.Semantics!.BmsonAudioLookups, x => Assert.False(x.CodecCompatibilityProven));
+        }
+        Assert.All(conflict.References, x => {
+            Assert.Equal(kind == "windows" ? "WINDOWS_ORDINAL_IGNORE_CASE" : "LEXICAL_ORDINAL", x.PathPolicy);
+            Assert.Equal(kind == "unknown-codec" ? "BMSON_SAME_STEM_CODEC_COMPATIBILITY_UNKNOWN" : "BMSON_RECOMMENDED_FORMAT_SEARCH_POTENTIAL", x.CandidateMatchPolicy);
+            Assert.Equal("BMSON_AUDIO_LOOKUP_PROPOSAL", x.CandidateOrigin); Assert.Equal(alternative, x.CandidateRelativePath);
+            Assert.NotEmpty(x.UsageIds);
+        });
+        Assert.DoesNotContain("CHART_EXACT_POTENTIAL_REFERENCED_RESOURCE_VARIANT", Assert.Single(r.Relationships).Labels);
+        e.Run("repeat", reports: reports.Reverse().ToArray());
+        Assert.Equal(System.IO.File.ReadAllBytes(Path.Combine(e.F.Base, "classified", "classification_report.json")), System.IO.File.ReadAllBytes(Path.Combine(e.F.Base, "repeat", "classification_report.json"))); NoAuthority(r);
+    }
+    [Fact]
+    public void AddedReferenceAndBuildFieldsDefaultToUnknownForOlderPhaseFiveJson()
+    {
+        const string json = "{\"root_id\":1,\"chart_entry_id\":2,\"chart_sha256\":\"chart\",\"declaration_id\":0,\"logical_id\":\"01\",\"written_path\":\"stem.wav\",\"path_policy\":\"LEXICAL_ORDINAL\",\"model\":\"historical-model\",\"reachability\":\"UNKNOWN\",\"usage_ids\":[]}";
+        var reference = JsonSerializer.Deserialize<PhaseFiveReference>(json, PhaseFourResolver.Json)!;
+        Assert.Equal("LEXICAL_ORDINAL", reference.PathPolicy); Assert.Null(reference.CandidateOrigin); Assert.Null(reference.CandidateMatchPolicy);
+        Assert.Null(reference.CandidateEntryId); Assert.Null(reference.CandidateRelativePath);
+        var dependency = JsonSerializer.Deserialize<PhaseFiveDependency>("{\"root_id\":1,\"chart_entry_id\":2,\"admission\":\"UNKNOWN\",\"diagnostics\":[]}", PhaseFourResolver.Json)!;
+        Assert.Null(dependency.ResolverBuildRevisionState);
+    }
+    [WindowsPhaseTwoTheory]
+    [InlineData("normal")][InlineData("historical")][InlineData("altered")]
+    public void ResolverBuildRevisionIsDeclaredWhileSemanticsAreReconstructed(string kind)
+    {
+        using var e = new Evidence("#WAV01 kick.wav\n#00111:01", true); e.Seal(); var reports = new[] { e.Report("A"), e.Report("B") };
+        var node = JsonNode.Parse(System.IO.File.ReadAllText(reports[0]))!; var graph = node["semantics"]!.ToJsonString();
+        var declared = kind switch { "historical" => new string('a', 40), "altered" => "EDITED_INFORMATIONAL_REVISION", _ => node["provenance"]!["resolver_build_revision"]!.GetValue<string>() };
+        node["provenance"]!["resolver_build_revision"] = declared; System.IO.File.WriteAllText(reports[0], node.ToJsonString());
+        var bytes = System.IO.File.ReadAllBytes(e.F.Db); var r = e.Run(reports: reports); var rootA = r.Roots.Single(x => x.Key == PathPolicy.Normalize(e.F.Path("A")));
+        var admitted = Assert.Single(rootA.Dependencies);
+        Assert.Equal("ADMITTED_RECONSTRUCTED_PHASE4", admitted.Admission); Assert.Equal("DECLARED_UNVERIFIED_BUILD_REVISION", admitted.ResolverBuildRevisionState);
+        Assert.Equal(declared, admitted.VerifiedReport!.Provenance.ResolverBuildRevision);
+        using var graphDocument = JsonDocument.Parse(graph);
+        Assert.True(JsonElement.DeepEquals(graphDocument.RootElement, JsonSerializer.SerializeToElement(admitted.VerifiedReport.Semantics, PhaseFourResolver.Json)));
+        Assert.Equal(PhaseTwoBuildProvenance.Current.EvidenceRevision, r.Provenance.BuildRevision);
+        Assert.Equal("PROVEN_WITHIN_NAMED_MODEL", Assert.Single(r.Relationships).DependencyState); Assert.True(Assert.Single(r.Relationships).ObservedTreeExact);
+        Assert.Equal(bytes, System.IO.File.ReadAllBytes(e.F.Db)); NoAuthority(r);
+    }
+    [WindowsPhaseTwoTheory]
     [InlineData("#WAV01 kick.wav\n#00111:01", "PROVEN_WITHIN_NAMED_MODEL")]
     [InlineData("#WAV01 KICK.WAV\n#00111:01", "UNKNOWN")]
     [InlineData("#BPM01 150\n#00108:01", "UNKNOWN")]
@@ -216,6 +326,7 @@ public sealed class PhaseFiveTests
     [InlineData("proof")][InlineData("candidate")][InlineData("condition")][InlineData("chart-bytes")][InlineData("content")]
     [InlineData("root")][InlineData("chart")][InlineData("component")][InlineData("v1-proof")][InlineData("authority")]
     [InlineData("duplicate-key")][InlineData("malformed")][InlineData("null")]
+    [InlineData("preflight")][InlineData("chart-sha")][InlineData("chart-native")]
     public void UntrustedReportsCannotPromoteSemanticsOrInvalidateIndependentPhysicalEquality(string kind)
     {
         using var e=new Evidence("#WAV01 kick.wav\n#00111:01",true); e.Seal(); var ra=e.Report("A"); var rb=e.Report("B");
@@ -226,6 +337,9 @@ public sealed class PhaseFiveTests
             case "condition": node["semantics"]!["relations"]![0]!["intersection"]!["state"]="IMPOSSIBLE_WITHIN_MODEL"; break;
             case "chart-bytes": node["verified_syntax"]!["original_bytes"]=Convert.ToBase64String(Encoding.UTF8.GetBytes("#TITLE forged")); break;
             case "content": node["provenance"]!["content_digest"]=new string('b',64); break;
+            case "preflight": node["provenance"]!["preflight_digest"]=new string('b',64); break;
+            case "chart-sha": node["provenance"]!["chart_sha256"]=new string('b',64); break;
+            case "chart-native": node["provenance"]!["chart"]!["native_identity"]="synthetic wrong identity"; break;
             case "root": node["provenance"]!["observation_root_id"]=99999; break;
             case "chart": node["provenance"]!["chart"]!["entry_id"]=99999; break;
             case "component": node["provenance"]!["component_id"]=99999; break;

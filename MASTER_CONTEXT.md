@@ -1545,3 +1545,15 @@ are retained. Historical equality is not functional interchangeability, transiti
 equivalence or source freshness. No safe-union/removal authority, recoverable-space
 claim, fusion plan, executor or Phase 6 follows. Future plans need separately
 admitted scope, dependency/boundary evidence and fresh verified preservation.
+
+# 50. Phase 5 independent-audit evidence boundaries — 2026-10-14
+
+Captured discovery diagnostics are part of the discovery interpretation. Charts
+and coverage exclusions must come from the same sealed snapshot; excluded folder
+relationships remain unknown, while independent CONTENT classifications survive.
+Declaration resolution policy and candidate discovery policy are independent
+evidence dimensions. Literal and BMSON proposal origins for one entry remain
+distinct; proposals do not establish codec usability or effective playback.
+Reconstructed semantic evidence is not historical producer-build authentication.
+The resolver revision is declared and unverified absent an independent anchor;
+the current validator build and sealed CONTENT/PREFLIGHT provenance remain separate.

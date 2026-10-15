@@ -104,7 +104,7 @@ public static class PhaseFiveClassifier
                 var verified = PhaseFiveAdmission.Verify(report, provenance, root, sourceRoot, token);
                 admitted.Add(new(root.Id, chart.EntryId, chart.Sha256!, "ADMITTED_RECONSTRUCTED_PHASE4",
                     verified.Semantics!.BoundedProof.State == "PROVEN_FOR_NAMED_OBSERVED_BINDING_SCOPE" ? "PROVEN_WITHIN_NAMED_MODEL" : "UNKNOWN", [],
-                    Convert.ToHexStringLower(SHA256.HashData(bytes)), verified));
+                    Convert.ToHexStringLower(SHA256.HashData(bytes)), verified, PhaseFiveAdmission.ResolverBuildRevisionState));
             }
             catch (Exception e) when (e is JsonException or InvalidOperationException or ArgumentException or IOException or UnauthorizedAccessException or NullReferenceException or KeyNotFoundException or OverflowException)
             { diagnostics.Add("UNVERIFIED_PHASE4_REPORT: " + input + ": " + e.Message); }
@@ -156,6 +156,7 @@ public static class PhaseFiveClassifier
             ["EXACT_ONLY admitted COMPLETE components only; observations are historical, not simultaneous immutable snapshots or current filesystem truth.",
              "Observation roots/containers are not proven packages. No transitive equivalence, source mutation, deletion list or recoverable-byte claim.",
              "Semantic admission recomputes the current Phase 4 graph from CONTENT-bound included bytes; absent/unverified reports leave dependencies UNKNOWN without invalidating physical dimensions.",
+             "Phase 4 resolver_build_revision is a declared historical value, not authenticated producer-build identity; current semantic reconstruction does not authenticate that claim.",
              "Existing CONTENT/source seal verification has scope-sized cost before Phase 5 budgets. This synthetic increment is not large-library acceptance.",
              "Native report exclusion reduces namespace risks, not universal race freedom or destructive safety."], limits);
         var json = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(result, PhaseFourResolver.Json).Replace("\r\n", "\n", StringComparison.Ordinal) + "\n");
@@ -190,7 +191,11 @@ public static class PhaseFiveClassifier
         var charts = db.Rows("SELECT source_root_id,original_path,normalized_path,parent_folder,filename,extension,size,mtime_ticks,md5,sha256,first_seen_scan,last_seen_scan,present,status FROM source_charts WHERE snapshot_id=$0 ORDER BY normalized_path COLLATE ORDINAL", parent)
             .Select(r => new ChartRecord(Convert.ToInt64(r[0]), (string)r[1]!, (string)r[2]!, (string)r[3]!, (string)r[4]!, (string)r[5]!, Convert.ToInt64(r[6]), Convert.ToInt64(r[7]),
                 (string?)r[8], (string?)r[9], Convert.ToInt64(r[10]), Convert.ToInt64(r[11]), Convert.ToInt64(r[12]) != 0, (string)r[13]!)).ToArray();
-        token.ThrowIfCancellationRequested(); var analysis = RelationshipAnalyzer.Analyze(charts);
+        var capturedDiagnostics = db.Rows("SELECT severity,code,path,message FROM source_diagnostics WHERE snapshot_id=$0 ORDER BY code COLLATE ORDINAL,path COLLATE ORDINAL,severity COLLATE ORDINAL,message COLLATE ORDINAL", parent)
+            .Select(r => new Diagnostic((string)r[0]!, (string)r[1]!, (string)r[2]!, (string)r[3]!)).ToArray();
+        token.ThrowIfCancellationRequested(); var analysis = RelationshipAnalyzer.Analyze(charts, capturedDiagnostics);
+        foreach (var folder in analysis.IncompleteFolders)
+            diagnostics.Add("PHASE1_DISCOVERY_INCOMPLETE: " + folder + "; excluded by captured coverage evidence; relationships remain UNKNOWN, not proven absent.");
         var pending = analysis.Candidates.Where(c => !roots.Any(a => a.PhysicalEvidenceState == "PROVEN_FROM_ACCEPTED_CONTENT" && a.Key == PathPolicy.Normalize(c.FolderA)) ||
             !roots.Any(b => b.PhysicalEvidenceState == "PROVEN_FROM_ACCEPTED_CONTENT" && b.Key == PathPolicy.Normalize(c.FolderB))).ToArray();
         if (pending.Length > limits.MaximumDiscoveryPairs) diagnostics.Add("PHASE1_DISCOVERY_PAIR_LIMIT");

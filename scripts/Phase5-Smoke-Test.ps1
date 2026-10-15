@@ -67,6 +67,7 @@ foreach ($taskPair in @($taskResult.relationships | Where-Object { 'HARD_PATH_CO
 }
 foreach ($taskObservedRoot in $taskResult.roots) {
     if ($taskObservedRoot.package_boundary -ne 'PACKAGE_BOUNDARY_UNKNOWN' -or $taskObservedRoot.semantic_trust -ne 'PROVEN_WITHIN_NAMED_MODEL' -or @($taskObservedRoot.dependencies).Count -ne 1) { throw 'Package boundary inferred or semantic admission lost.' }
+    if ($taskObservedRoot.dependencies[0].resolver_build_revision_state -ne 'DECLARED_UNVERIFIED_BUILD_REVISION') { throw 'Historical producer build presented without its unauthenticated status.' }
     $taskKick = $taskObservedRoot.entries | Where-Object relative_path -eq 'kick.wav'
     $taskPayload = if ($taskObservedRoot.id -eq $taskC.id) { 'variant audio C' } else { 'known audio AB' }
     $taskExpected = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($taskUtf8.GetBytes($taskPayload))).ToLowerInvariant()
