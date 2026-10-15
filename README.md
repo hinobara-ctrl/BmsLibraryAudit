@@ -576,6 +576,25 @@ report. Exit 1 refuses invalid CONTENT/component/destination or publication; 130
 is cancellation. All four authority/equivalence flags remain false. No recoverable
 space, removable-file list, fusion plan or mutating executor is generated.
 
+Global and individual states answer different questions:
+
+| Field | Scope and meaning |
+| --- | --- |
+| Result.Coverage | Global classification/admission work: any retained diagnostic yields INCOMPLETE. |
+| Result.ExitCode | 0 only for COMPLETE; otherwise 2 for the returned result. |
+| Pair.Trust | PROVEN_FROM_ACCEPTED_CONTENT for a reproduced admitted physical pair; not package equivalence. |
+| Pair.ConflictCoverage | COMPLETE or INCOMPLETE enumeration of conflict details; incomplete is never absence. |
+| Pair.DependencyState | PROVEN_WITHIN_NAMED_MODEL only if both roots have positive semantic trust; otherwise UNKNOWN. |
+| Root.PhysicalEvidenceState | Complete admitted root view, or BLOCKED when its view exceeds the budget. |
+| Root.SemanticCoverage | Whether every observed chart has one admitted reconstructed report; not universal dependency closure. |
+| Root.SemanticTrust | Positive only if all those charts have the named bounded proof; otherwise UNKNOWN. |
+
+For example, a historical DIRECTORY_UNREADABLE exclusion can yield global
+INCOMPLETE while an independent admitted pair retains PROVEN_FROM_ACCEPTED_CONTENT.
+Consumers must inspect each dimension rather than replacing its state with the
+global status. PACKAGE_BOUNDARY_UNKNOWN still applies to songs, partial distributions,
+variant folders, auxiliary collections and nested containers alike.
+
 Hard caps (API budgets can reduce them): 32 roots, 256 pairs, 100,000 root-view
 entries and 100,000 cumulative pair-view entries, 64 Phase 4 inputs totaling 64 MiB,
 100,000 imported semantic relations, 100,000 conflict details globally, 64 MiB output,
@@ -583,6 +602,10 @@ entries and 100,000 cumulative pair-view entries, 64 Phase 4 inputs totaling 64 
 unclassified scope; no truncated tree/conflict enumeration is silently complete.
 Existing global CONTENT/source verification retains its scope-sized cost before
 these budgets; no million-file or real-library performance acceptance is claimed.
+Serialization materializes the result and UTF-8 JSON before checking its byte cap,
+so that cap is not a universal memory ceiling. Multiple roots can require quadratic
+pair work before limits apply. Synthetic validation provides no measured acceptance
+for million-file libraries; future scope design must measure these costs separately.
 Output/source/input namespace guards and shared exclusive no-overwrite publication
 are reused; they do not prove universal race freedom or destructive safety.
 
