@@ -1642,3 +1642,31 @@ and README for commands, finite budgets, current-validator replay limits and
 synthetic validation scope. Phase 6B groups/variants, Phase 7A staging, publication
 and cleanup remain future separately authorized capabilities. No stage, commit,
 push or real-library execution is authorized. STOP for independent review.
+
+# 54. First disposable synthetic physical staging — 2026-10-15
+
+The owner records bounded independent acceptance of Phase 6A at published baseline
+`3d8cce1a65c4f5ef1ded27a1ccee27710f86e8dc` and separately authorizes the first
+internal synthetic Phase 7A constructor/verifier. The new increment is implemented
+synthetically pending independent review; it changes no historical plan authority,
+contract, seal, schema or Phase 1–6 behavior.
+
+A private workspace factory creates fixed synthetic sources, evidence and plan;
+the internal constructor accepts only that owned context and its fixed new stage.
+Every source appearance is freshly hashed and guarded, including unchosen shared
+copies. Exact relative trees are copied with all charts, auxiliaries, distinct
+equal-hash names and empty directories retained. Originals are never moved,
+rewritten or retired. An independent verifier enumerates and hashes the actual
+stage and rechecks source preservation against the admitted plan, rather than
+trusting copy receipts. Separate receipts record physical states/provenance,
+actual copied bytes and synthetic cost outside the song tree.
+
+No public staging CLI or arbitrary-path executor is exposed. Partial/failed stages
+remain isolated and unaccepted without automatic deletion/resume. Native guards,
+handles and fresh digests reduce detectable races but are not global atomicity.
+STAGING_PHYSICALLY_VERIFIED does not establish package/dependency closure,
+reference preservation, universal playback, relocation safety, publication or
+original removal. Phase 6B variants, Phase 8 and Phase 9 remain separately gated.
+See the [Phase 7A contract](docs/PHASE_7A_SYNTHETIC_STAGING_IMPLEMENTATION.md) and
+README for the bounded test harness, limits and review status. No stage, commit,
+push or real-library access is authorized. STOP for independent review.

@@ -10,10 +10,12 @@ at the end of this document. Broader Phase 5 and real-operation gates remain ope
 
 The [proposed chart-anchored Phase 6 design](docs/PHASE_6_CHART_ANCHORED_CONSERVATIVE_CONSOLIDATION_DESIGN.md)
 guides the first two-root read-only physical union planner using verified legacy
-EXACT_ONLY CONTENT. Phase 6A is `IMPLEMENTED_SYNTHETIC_PENDING_REVIEW`; its
+EXACT_ONLY CONTENT. Phase 6A was independently accepted within its synthetic scope
+and published at `3d8cce1a65c4f5ef1ded27a1ccee27710f86e8dc`; its
 [bounded contract](docs/PHASE_6A_VIRTUAL_UNION_IMPLEMENTATION.md) retains every
-appearance, auxiliary and conflict. Variant relocation, staging, publication and
-cleanup remain future capabilities with separate gates.
+appearance, auxiliary and conflict. The first internal synthetic Phase 7A staging
+harness is implemented pending independent review. Variant relocation, operational
+publication and cleanup remain future capabilities with separate gates.
 
 **Long-term objective:** verified fusion of related BMS/BMSON folders and removal
 of provably redundant file instances, while preserving all unique content and
@@ -706,7 +708,7 @@ flags stay false. Digests anchor accepted consistency, not authenticated produce
 identity against complete replacement/resealing. This increment does not authorize
 real-library execution, semantic adapters, resource substitution, deletion or fusion.
 
-## Phase 6A: historical virtual union (synthetic, pending independent review)
+## Phase 6A: historical virtual union (bounded synthetic scope accepted)
 
 ```powershell
 pwsh -NoLogo -NoProfile -NonInteractive -File scripts/Phase6A-Smoke-Test.ps1
@@ -757,5 +759,62 @@ without partial success; serialization/blocked I/O and preexisting global verifi
 work are not instantaneous hard bounds. Existing protected-path/native checks and
 exclusive no-overwrite report publication are reused. See the
 [Phase 6A contract](docs/PHASE_6A_VIRTUAL_UNION_IMPLEMENTATION.md) for exact digest,
-ordering, states, preservation and verification rules. Phase 6B/7A/8/9 remain
-unimplemented and separately authorized; STOP for independent review of 6A.
+ordering, states, preservation and verification rules. Phase 6B/8/9 remain
+unimplemented; the separate internal synthetic Phase 7A increment below is pending
+its own independent review and grants no real-data or operational authority.
+
+## Phase 7A: internal disposable synthetic staging
+
+Phase 6A's bounded synthetic implementation was independently accepted and
+published at `3d8cce1a65c4f5ef1ded27a1ccee27710f86e8dc`. Its historical contract
+and authority flags remain unchanged. The first Phase 7A increment is
+`IMPLEMENTED_SYNTHETIC_PENDING_INDEPENDENT_REVIEW`:
+
+```powershell
+# Release build first; this invokes one fixed integration test, not an executor CLI.
+pwsh -NoLogo -NoProfile -NonInteractive -File scripts/Phase7A-Smoke-Test.ps1
+```
+
+There is no `phase7 stage` command or public API accepting arbitrary sources,
+plans or destinations. An internal factory exclusively creates a random owned
+workspace under the test application's base directory, seeds fixed synthetic A/B
+payloads and runs scan→preflight→CONTENT→Phase 6A plan/verify. Its private context,
+owned-file identities, pinned native directories and fixed disjoint stage path
+provide the admission boundary; a marker or IsSynthetic boolean does not.
+Generated workspaces are retained for inspection and are not music-library roots.
+
+The constructor readmits only a compatible complete conflict-free plan, freshly
+hashes **every** source appearance, holds source handles denying write/delete
+sharing, and checks source namespaces/metadata/native identities before and after.
+Deterministic (root ID, entry ID) selection chooses a verified copy source only.
+CreateNew files and exclusive directory creation build the exact relative tree:
+one file per shared path, all exclusives, distinct equal-hash names, byte-identical
+charts and empty directories. It does not recreate hardlink topology or rewrite
+charts/references. Existing paths, reparse points, escaping/ambiguous Win32 names
+and alias substitutions are refused.
+
+The independent verifier enumerates and hashes the real stage, checks every
+expected path/type/size/SHA, rejects extras/missing/changed files, rechecks all
+sources and reconstructs receipt claims from the admitted plan. Recomputing a
+receipt digest cannot authorize incorrect target bytes or edited provenance.
+`stage_receipt.json` is outside the staged song tree; it records source/target
+facts, all equivalent appearances, chosen sources, actual bytes written and elapsed
+milliseconds. Failure receipts distinguish stale sources, incomplete/cancelled
+work and operational failure. Partial stages remain isolated, unaccepted and are
+never automatically resumed or deleted. Partial-write byte counters include
+completed Write calls; file/directory counts describe independently verified
+targets, not an assertion that an incomplete stage contains no other entries.
+
+Limits and fault coverage are in the [Phase 7A contract](docs/PHASE_7A_SYNTHETIC_STAGING_IMPLEMENTATION.md):
+128 source files, 64 source/target directories, 8 MiB source/copy bytes, 64 MiB
+cumulative reads, 2 MiB receipt, 128 MiB managed-memory growth and 60 seconds at
+cooperative checkpoints. Limits may only be reduced. This is not a process sandbox
+against malicious in-process code, universal race exclusion or a global filesystem
+transaction. The smoke prints the physical stage, receipt, file list, bytes and
+measured synthetic cost.
+
+`STAGING_PHYSICALLY_VERIFIED` proves faithful physical construction of this owned
+fixture. Dependencies, package boundaries, reference/relocation safety and universal
+player behavior remain unproved. Sources remain intact, publication and retirement
+remain false, and Phase 6B/8/9 are not implemented by this increment. No real-library
+execution or operational consolidation is authorized. STOP for independent review.
