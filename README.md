@@ -14,7 +14,9 @@ EXACT_ONLY CONTENT. Phase 6A was independently accepted within its synthetic sco
 and published at `3d8cce1a65c4f5ef1ded27a1ccee27710f86e8dc`; its
 [bounded contract](docs/PHASE_6A_VIRTUAL_UNION_IMPLEMENTATION.md) retains every
 appearance, auxiliary and conflict. The first internal synthetic Phase 7A staging
-harness is implemented pending independent review. Variant relocation, operational
+harness was published and independently accepted in its bounded synthetic scope
+at `40dc261f27e0f25adc084057e3d2a14f316301c9`. The new read-only Phase 6B group
+planner below is implemented synthetically pending independent review. Variant relocation, operational
 publication and cleanup remain future capabilities with separate gates.
 
 **Long-term objective:** verified fusion of related BMS/BMSON folders and removal
@@ -759,16 +761,16 @@ without partial success; serialization/blocked I/O and preexisting global verifi
 work are not instantaneous hard bounds. Existing protected-path/native checks and
 exclusive no-overwrite report publication are reused. See the
 [Phase 6A contract](docs/PHASE_6A_VIRTUAL_UNION_IMPLEMENTATION.md) for exact digest,
-ordering, states, preservation and verification rules. Phase 6B/8/9 remain
-unimplemented; the separate internal synthetic Phase 7A increment below is pending
-its own independent review and grants no real-data or operational authority.
+ordering, states, preservation and verification rules. The separate Phase 6B
+consumer below does not change this two-root contract. Phases 8/9 remain
+unimplemented; internal synthetic Phase 7A grants no real-data or operational authority.
 
 ## Phase 7A: internal disposable synthetic staging
 
 Phase 6A's bounded synthetic implementation was independently accepted and
 published at `3d8cce1a65c4f5ef1ded27a1ccee27710f86e8dc`. Its historical contract
-and authority flags remain unchanged. The first Phase 7A increment is
-`IMPLEMENTED_SYNTHETIC_PENDING_INDEPENDENT_REVIEW`:
+and authority flags remain unchanged. The owner records independent acceptance
+of the first bounded synthetic Phase 7A increment at `40dc261f27e0f25adc084057e3d2a14f316301c9`:
 
 ```powershell
 # Release build first; this invokes one fixed integration test, not an executor CLI.
@@ -816,5 +818,79 @@ measured synthetic cost.
 `STAGING_PHYSICALLY_VERIFIED` proves faithful physical construction of this owned
 fixture. Dependencies, package boundaries, reference/relocation safety and universal
 player behavior remain unproved. Sources remain intact, publication and retirement
-remain false, and Phase 6B/8/9 are not implemented by this increment. No real-library
-execution or operational consolidation is authorized. STOP for independent review.
+remain false. This increment implements no Phase 6B construction or Phase 8/9.
+No real-library execution or operational consolidation is authorized.
+
+The follow-up synthetic fixtures also cover identical charts named `normal.bms`
+and `alternate.bms` in differently named folders, and complementary internal
+directories with equal auxiliary bytes at distinct paths. Both chart names and
+all distinct paths remain. Verification covers ordinal paths/names, entry kinds,
+default-stream bytes/size/SHA, source appearances and empty directories. Native
+identities bind source/target observations; target identities are new. Hardlink
+names are retained as ordinary independent files, without reproducing link
+topology. ACLs, permissions, alternate data streams, timestamps and other NTFS
+metadata are not proved preserved. Future real-library enablement must preserve
+required properties or explicitly refuse unsupported cases; this harness grants
+no such enablement. The historical Phase 7A contract remains unchanged.
+
+## Phase 6B: conservative group and intact variant planning
+
+Implemented for synthetic review, using only 3–6 explicit disjoint roots in one
+verified ADMITTED COMPLETE legacy EXACT_ONLY CONTENT component. Neither similarly
+named folders nor identical chart filenames are required. The separate
+observation-pair/subset profile and additional distinct chart sets are not admitted.
+
+```powershell
+pwsh -NoLogo -NoProfile -NonInteractive -File scripts/Phase6B-Smoke-Test.ps1
+# Use only the owned synthetic evidence emitted by this smoke:
+dotnet src/BmsLibraryAudit.Cli/bin/Release/net10.0/bms-audit.dll phase6 group-plan `
+  --db <phase2.db> --content-session <id> --accept-content-manifest <sha256> `
+  --component <sealed-key> --root <root-A> --root <root-B> --root <root-C> `
+  --output <new-or-empty-directory-outside-protected-roots>
+dotnet src/BmsLibraryAudit.Cli/bin/Release/net10.0/bms-audit.dll phase6 group-verify `
+  --db <phase2.db> --content-session <id> --accept-content-manifest <sha256> `
+  --component <sealed-key> --root <root-A> --root <root-B> --root <root-C> `
+  --plan <group_union_plan.json>
+```
+
+`group_union_plan.json` includes full inventories, native/physical identities,
+chart SHA identities and appearances, conflicts, every examined subset, all
+maximal compatible groups, their full virtual namespaces and per-alternative
+conservation ledgers. Each subset receives its own whole-namespace check, including
+ancestors and Windows collisions; connected pairs do not establish a group.
+For A with `kick.wav=X`, B without it and C with `kick.wav=Y`, the alternatives
+are A+B and B+C. Neither is selected. Multiple maximal alternatives yield
+`HUMAN_SELECTION_REQUIRED`; a single full union is a proposal, still unselected.
+
+Every excluded observation root remains a complete variant: all charts, opaque
+auxiliaries, resources, empty directories, original paths and evidence identities.
+`_variantes/001` labels follow excluded sealed root-key order and may change if
+the selected sources change. They convey no quality preference or destination
+permission. Variants remain `PRESERVE_IN_PLACE` / `RELOCATION_NOT_PROVEN`.
+Existing case-equivalent `_variantes` names block the suggested presentation with
+`VARIANT_LAYOUT_NAMESPACE_CONFLICT`, without renaming or dropping originals.
+Same path/type/bytes shares one virtual entry with all origins; distinct paths
+remain distinct even for identical bytes. No original physical appearance is retired.
+
+The separate verifier readmits CONTENT/PREFLIGHT/source seals and independently
+reconstructs exhaustive maximality, source accounting, complete variants, labels,
+states and counts. It does not call the planner; a recomputed plan digest alone
+cannot admit fabricated results. Semantic obligations remain UNKNOWN per chart;
+Phase 4 JSON inputs are not accepted. Dependencies, package boundaries, NTFS
+preservation and relocation are not proved by a physically compatible plan.
+No source payload is reopened, database written, main distribution selected,
+directory consolidated, variant built, or staging invoked.
+
+Exit 0: one valid physical proposal; 2: valid alternatives requiring human
+selection; 1: invalid evidence/plan, exceeded budget or publication error; 130:
+cancellation. Exit 2 is an inspection result, never execution authority.
+The [Phase 6B contract](docs/PHASE_6B_GROUP_AND_VARIANT_PLANNER_IMPLEMENTATION.md)
+defines its own version/digest, canonical order and bounds: 6 roots, 63 subsets,
+20,000 source entries/conflicts, 100,000 virtual entries and 200,000 ledger rows
+across alternatives, 1,280,000 examined appearances per reconstruction, 16 MiB
+report, 128 MiB managed-memory growth and 60 seconds at cooperative checkpoints.
+Limits can only be reduced; insufficient budgets refuse rather than truncate.
+Existing whole-session validation precedes those consumer budgets. Report
+publication reuses protected-root/input/native bindings and exclusive no-overwrite
+publication. Source freshness, authenticity and universal race freedom remain
+unproved. STOP for independent review; no real execution or Phase 8/9 is authorized.

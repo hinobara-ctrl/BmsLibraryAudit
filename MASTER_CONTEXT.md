@@ -1670,3 +1670,36 @@ original removal. Phase 6B variants, Phase 8 and Phase 9 remain separately gated
 See the [Phase 7A contract](docs/PHASE_7A_SYNTHETIC_STAGING_IMPLEMENTATION.md) and
 README for the bounded test harness, limits and review status. No stage, commit,
 push or real-library access is authorized. STOP for independent review.
+
+# 55. Bounded group alternatives and synthetic fixture hardening — 2026-10-15
+
+The owner records independent acceptance of bounded synthetic Phase 7A at
+`40dc261f27e0f25adc084057e3d2a14f316301c9`. Its historical contract is retained.
+Additional fixed fixtures preserve identical charts under different filenames
+and complementary internal structures, without widening the private capability.
+Default-stream path/type/bytes, source appearances and empty directories are
+verified; new target identities do not reproduce hardlink topology, ACLs, ADS
+or all NTFS metadata. Required unsupported properties block future real enablement.
+
+The separately authorized first Phase 6B increment is implemented synthetically
+for independent review. It reuses legacy CONTENT/PREFLIGHT/source admission and
+physical kernels, admits 3–6 explicit disjoint roots in one ADMITTED COMPLETE
+EXACT_ONLY component, and checks every nonempty subset's whole namespace.
+All compatible groups maximal by inclusion remain alternative main candidates;
+connectivity is not compatibility and there is no automatic main selection.
+Each alternative retains every source appearance in its ledger and every
+excluded observation root as a complete in-place variant, including charts,
+unknown auxiliaries and empty directories. Conditional `_variantes/001` labels
+are deterministic traceability, not quality or relocation permission; reserved
+name collisions are recorded without altering resources.
+
+A separate plan verifier reconstructs maximality, exhaustive coverage, virtual
+targets, variants and conservation from readmitted evidence, without calling
+the planner. It checks a separate version/domain digest, declared budgets and
+UNKNOWN dependency obligations per chart. No Phase 4 claims, subset-profile
+adapter, current freshness, package closure or relocation proof is introduced.
+Construction, physical destination verification, publication and retirement
+remain absent; every operational authority stays false. Phase 6 is not universally
+closed. See the [6B contract](docs/PHASE_6B_GROUP_AND_VARIANT_PLANNER_IMPLEMENTATION.md)
+and README. No real-library operation, stage/commit/push or Phase 8/9 is authorized.
+STOP for independent review.

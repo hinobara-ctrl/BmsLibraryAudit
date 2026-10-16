@@ -669,7 +669,13 @@ public sealed class PhaseTwoPreflightTests
         using (PhaseTwoWriter.Acquire(fixture.Db))
         {
             var files = new InstrumentedFiles();
-            Task.Run(() => Assert.Throws<InvalidOperationException>(() => fixture.Run(files))).GetAwaiter().GetResult();
+            var ownerThread = Environment.CurrentManagedThreadId;
+            // Mutex ownership is thread-affine. A synchronously awaited Task.Run
+            // can inline on its waiting owner and reenter instead of contending.
+            Task.Factory.StartNew(() => {
+                Assert.NotEqual(ownerThread, Environment.CurrentManagedThreadId);
+                Assert.Throws<InvalidOperationException>(() => fixture.Run(files));
+            }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default).GetAwaiter().GetResult();
             Assert.Empty(files.Reads); Assert.False(File.Exists(fixture.Db));
         }
         fixture.Run();

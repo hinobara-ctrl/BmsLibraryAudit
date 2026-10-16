@@ -6,7 +6,7 @@ using Microsoft.Win32.SafeHandles;
 
 namespace BmsLibraryAudit.Core;
 
-internal enum PhaseSevenFixture { Compatible, Conflict, CaseConflict, Hardlinks }
+internal enum PhaseSevenFixture { Compatible, Conflict, CaseConflict, Hardlinks, DifferentChartNames, DifferentStructure }
 
 // A nonpublic capability: no external source/evidence/destination is accepted.
 // Only this factory can create an instance, and it creates the fixture itself.
@@ -18,8 +18,8 @@ internal sealed class PhaseSevenSyntheticWorkspace : IDisposable
     internal string Root { get; }
     internal NativePathFacts Facts { get; }
     internal string Library => Path.Combine(Root, "sources");
-    internal string SourceA => Path.Combine(Library, "A");
-    internal string SourceB => Path.Combine(Library, "B");
+    internal string SourceA => Path.Combine(Library, scenario == PhaseSevenFixture.DifferentChartNames ? "SongA" : "A");
+    internal string SourceB => Path.Combine(Library, scenario == PhaseSevenFixture.DifferentChartNames ? "AnotherFolder" : "B");
     internal string Evidence => Path.Combine(Root, "phase2.db");
     internal string SourceDatabase => Path.Combine(Root, "audit.db");
     internal string PlanPath => Path.Combine(Root, "plan", "virtual_union_plan.json");
@@ -29,8 +29,10 @@ internal sealed class PhaseSevenSyntheticWorkspace : IDisposable
     internal NativePathFacts? StageIdentity { get; private set; }
     private bool attempted;
     private bool disposed;
-    private PhaseSevenSyntheticWorkspace(string root)
+    private readonly PhaseSevenFixture scenario;
+    private PhaseSevenSyntheticWorkspace(string root, PhaseSevenFixture scenario)
     {
+        this.scenario = scenario;
         Root = root; PhaseSevenNative.CreateDirectory(root); Facts = PhaseTwoSafety.Inspect(root);
         guards.Add(new(root));
     }
@@ -38,12 +40,24 @@ internal sealed class PhaseSevenSyntheticWorkspace : IDisposable
     {
         PhaseTwoSafety.RequirePlatform();
         var parent = PathPolicy.Absolute(AppContext.BaseDirectory); PathPolicy.RejectReparseAncestors(parent);
-        var workspace = new PhaseSevenSyntheticWorkspace(Path.Combine(parent, "phase7a-" + Guid.NewGuid().ToString("N")));
+        var workspace = new PhaseSevenSyntheticWorkspace(Path.Combine(parent, "phase7a-" + Guid.NewGuid().ToString("N")), scenario);
         try { workspace.Initialize(scenario); return workspace; } catch { workspace.Dispose(); throw; }
     }
     private void Initialize(PhaseSevenFixture scenario)
     {
         NewDirectory(Library); NewDirectory(SourceA); NewDirectory(SourceB);
+        if (scenario is PhaseSevenFixture.DifferentChartNames or PhaseSevenFixture.DifferentStructure) {
+            var smallChart = Encoding.UTF8.GetBytes("#WAV01 kick.wav\r\n#00111:01\r\n");
+            NewFile(Path.Combine(SourceA, scenario == PhaseSevenFixture.DifferentChartNames ? "normal.bms" : "chart.bms"), smallChart);
+            NewFile(Path.Combine(SourceB, scenario == PhaseSevenFixture.DifferentChartNames ? "alternate.bms" : "chart.bms"), smallChart);
+            foreach (var source in new[] { SourceA, SourceB }) NewFile(Path.Combine(source, "kick.wav"), Encoding.UTF8.GetBytes("same synthetic kick"));
+            if (scenario == PhaseSevenFixture.DifferentStructure) {
+                NewDirectory(Path.Combine(SourceA, "north")); NewDirectory(Path.Combine(SourceB, "south"));
+                NewDirectory(Path.Combine(SourceB, "south", "empty"));
+                NewFile(Path.Combine(SourceA, "north", "opaque"), Encoding.UTF8.GetBytes("same auxiliary bytes"));
+                NewFile(Path.Combine(SourceB, "south", "other-name"), Encoding.UTF8.GetBytes("same auxiliary bytes"));
+            }
+        } else {
         NewDirectory(Path.Combine(SourceA, "empty")); NewDirectory(Path.Combine(SourceA, "sub"));
         var chart = Encoding.UTF8.GetBytes("#WAV01 kick.wav\r\n#BMP01 image.bmp\r\n#00111:01\r\n");
         var audio = Enumerable.Range(0, 65536 + 17).Select(i => (byte)(i % 251)).ToArray();
@@ -61,6 +75,7 @@ internal sealed class PhaseSevenSyntheticWorkspace : IDisposable
         if (scenario == PhaseSevenFixture.Hardlinks) {
             var alias = Path.Combine(SourceA, "hardlink.wav");
             if (!PhaseSevenNative.CreateHardLink(alias, Path.Combine(SourceA, "kick.wav"), IntPtr.Zero)) throw new IOException("Synthetic hardlink creation failed.");
+        }
         }
         foreach (var path in Directory.GetFileSystemEntries(Library, "*", SearchOption.AllDirectories).Append(Library)) owned.Add(path, PhaseTwoSafety.Inspect(path));
         var scan = new ChartScanner().Scan(new(SourceDatabase, [Library]));

@@ -18,6 +18,8 @@ static int Run(string[] args)
         bms-audit phase5 classify --db <phase2.db> --content-session <id> --accept-content-manifest <sha256> --component <key> [--phase4-report <json> ...] --output <new-or-empty-directory>
         bms-audit phase6 plan --db <phase2.db> --content-session <id> --accept-content-manifest <sha256> --component <key> --root <key-A> --root <key-B> --output <new-or-empty-directory>
         bms-audit phase6 verify --db <phase2.db> --content-session <id> --accept-content-manifest <sha256> --component <key> --root <key-A> --root <key-B> --plan <virtual_union_plan.json>
+        bms-audit phase6 group-plan --db <phase2.db> --content-session <id> --accept-content-manifest <sha256> --component <key> --root <key-A> --root <key-B> --root <key-C> [--root <key> ...] --output <new-or-empty-directory>
+        bms-audit phase6 group-verify --db <phase2.db> --content-session <id> --accept-content-manifest <sha256> --component <key> --root <key-A> --root <key-B> --root <key-C> [--root <key> ...] --plan <group_union_plan.json>
         bms-audit observation-pair capture --source-db <synthetic-audit.db> --source-scan <id> --root <a> --root <b> --db <new-pair.db> --output <new-or-empty>
         bms-audit observation-pair preflight --db <pair.db> --accept-source <source-sha256> --output <new-or-empty>
         bms-audit observation-pair hash --db <pair.db> --accept-manifest <preflight-sha256> --output <new-or-empty>
@@ -79,6 +81,7 @@ static int Run(string[] args)
 
 static int RunPhaseSix(string[] args, CancellationToken token)
 {
+    if (args.Length >= 2 && args[1] is "group-plan" or "group-verify") return RunPhaseSixGroup(args, token);
     if (args.Length < 2 || args[1] is not ("plan" or "verify")) throw new ArgumentException("phase6 requires plan or verify; historical virtual data only.");
     var command = args[1]; var values = new Dictionary<string, string>(StringComparer.Ordinal); var roots = new List<string>();
     for (var i = 2; i < args.Length; i++) {
@@ -98,6 +101,29 @@ static int RunPhaseSix(string[] args, CancellationToken token)
         Roots = result.Plan.Roots.Select(r => new { r.Id, r.Key, r.OriginalPath, Appearances = r.Entries.Length }), result.Plan.Counts, result.Plan.States,
         Report = command == "plan" ? Path.Combine(PathPolicy.Absolute(Required("--output")), "virtual_union_plan.json") : PathPolicy.Absolute(Required("--plan")),
         Notice = "Historical virtual union only. No relocation, materialization, publication or removal authorized." }, new JsonSerializerOptions { WriteIndented = true }));
+    return result.ExitCode;
+}
+
+static int RunPhaseSixGroup(string[] args, CancellationToken token)
+{
+    var planning = args[1] == "group-plan"; var values = new Dictionary<string, string>(StringComparer.Ordinal); var roots = new List<string>();
+    for (var i = 2; i < args.Length; i++) {
+        var key = args[i];
+        if (++i >= args.Length || args[i].StartsWith("--", StringComparison.Ordinal)) throw new ArgumentException("Missing Phase 6B option value.");
+        if (key == "--root") { roots.Add(args[i]); continue; }
+        if (!(key is "--db" or "--content-session" or "--accept-content-manifest" or "--component" ||
+            planning && key == "--output" || !planning && key == "--plan") || !values.TryAdd(key, args[i]))
+            throw new ArgumentException("Unknown/duplicate Phase 6B option: " + key);
+    }
+    string Required(string key) => values.TryGetValue(key, out var value) ? value : throw new ArgumentException(key + " is required.");
+    if (roots.Count is < 3 or > 6 || !long.TryParse(Required("--content-session"), out var session) || session <= 0)
+        throw new ArgumentException("Three to six explicit --root values and a positive CONTENT session required.");
+    var options = new PhaseSixOptions(Required("--db"), session, Required("--accept-content-manifest"), Required("--component"), roots);
+    var result = planning ? PhaseSixGroupPlanner.Plan(options, Required("--output"), token: token) : PhaseSixGroupVerifier.Verify(options, Required("--plan"), token);
+    Console.WriteLine(JsonSerializer.Serialize(new { result.Plan.PlanVersion, result.PlanSha256, result.Plan.Counts, result.Plan.States,
+        Candidates = result.Plan.Candidates.Select(c => new { c.CandidateId, c.RootIds, c.Role, Variants = c.Variants.Length, c.VariantLayoutConflicts }),
+        Report = planning ? Path.Combine(PathPolicy.Absolute(Required("--output")), "group_union_plan.json") : PathPolicy.Absolute(Required("--plan")),
+        Notice = "Historical virtual alternatives only. No main selection, relocation, construction, publication or removal authorized." }, new JsonSerializerOptions { WriteIndented = true }));
     return result.ExitCode;
 }
 

@@ -54,6 +54,38 @@ public sealed class PhaseSevenTests(ITestOutputHelper output)
             receipt.State, receipt.Files, receipt.Directories, receipt.BytesCopied, receipt.ElapsedMilliseconds, FilesPresent = receipt.Targets.Where(t => t.Kind == "REGULAR_FILE").Select(t => new { t.RelativePath, t.Size, t.Sha256 }) }));
     }
     [WindowsPhaseTwoTheory]
+    [InlineData("DifferentChartNames")][InlineData("DifferentStructure")]
+    public void IndependentNamesAndStructuresPreserveEveryAppearance(string scenario)
+    {
+        using var w = PhaseSevenSyntheticWorkspace.Create(Enum.Parse<PhaseSevenFixture>(scenario));
+        var before = Snapshot(w);
+        var directories = Directory.GetDirectories(w.Library, "*", SearchOption.AllDirectories).Append(w.Library).ToDictionary(p => p, PhaseTwoSafety.Inspect);
+        var result = PhaseSevenSyntheticStager.Run(w); Assert.True(result.Success, string.Join(";", result.Envelope.Receipt.Errors));
+        var receipt = PhaseSevenStageVerifier.Verify(w, PhaseSevenStageVerifier.ReadReceipt(w)).Receipt; NoAuthority(receipt);
+        var expected = scenario == "DifferentChartNames"
+            ? new[] { ".", "alternate.bms", "kick.wav", "normal.bms" }
+            : new[] { ".", "chart.bms", "kick.wav", "north", "north/opaque", "south", "south/empty", "south/other-name" };
+        Assert.Equal(expected, receipt.Targets.Select(t => t.RelativePath));
+        Assert.Single(receipt.Copies, c => c.RelativePath == "kick.wav");
+        Assert.Equal(2, Assert.Single(receipt.Copies, c => c.RelativePath == "kick.wav").EquivalentSources.Length);
+        var plan = w.AdmitPlan().Plan;
+        foreach (var root in plan.Roots) foreach (var entry in root.Entries.Where(e => e.Kind == "REGULAR_FILE")) {
+            var target = w.TargetPath(entry.RelativePath);
+            Assert.Equal(before[entry.OriginalPath].Bytes, File.ReadAllBytes(target));
+            Assert.Contains(new PhaseSixSource(root.Id, entry.EntryId), Assert.Single(receipt.Copies, c => c.RelativePath == entry.RelativePath).EquivalentSources);
+        }
+        var charts = plan.Roots.SelectMany(r => r.Entries).Where(e => e.IsChart).ToArray();
+        Assert.Equal(2, charts.Length); Assert.Single(charts.Select(e => e.Sha256).Distinct());
+        if (scenario == "DifferentChartNames") {
+            Assert.Equal(new[] { "alternate.bms", "normal.bms" }, charts.Select(e => e.RelativePath).Order(StringComparer.Ordinal));
+            Assert.NotEqual(Path.GetFileName(w.SourceA), Path.GetFileName(w.SourceB));
+            Assert.Equal(2, receipt.Copies.Count(c => c.RelativePath.EndsWith(".bms", StringComparison.Ordinal)));
+        }
+        Preserved(w, before);
+        foreach (var (path, facts) in directories) Assert.Equal(facts, PhaseTwoSafety.Inspect(path));
+        Assert.Equal(directories.Keys.Order(StringComparer.Ordinal), Directory.GetDirectories(w.Library, "*", SearchOption.AllDirectories).Append(w.Library).Order(StringComparer.Ordinal));
+    }
+    [WindowsPhaseTwoTheory]
     [InlineData("Conflict")][InlineData("CaseConflict")]
     public void ConflictingPlansNeverBuildPartialTrees(string fixture)
     {

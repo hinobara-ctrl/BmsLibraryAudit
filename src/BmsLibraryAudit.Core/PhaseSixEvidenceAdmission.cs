@@ -17,12 +17,19 @@ internal sealed class PhaseSixEvidenceAdmission : IDisposable
         Database = PhaseTwoDatabase.Open(path, false);
     }
     internal static PhaseSixEvidenceAdmission Load(PhaseSixOptions options, PhaseSixLimits limits, CancellationToken token)
+        => LoadCore(options, limits, token, 2, 2);
+    // The historical two-root entry point remains exact; only the new group consumer
+    // can request a wider bounded selection through this shared admission kernel.
+    internal static PhaseSixEvidenceAdmission LoadGroup(PhaseSixOptions options, PhaseSixLimits limits, CancellationToken token)
+        => LoadCore(options, limits, token, 3, 6);
+    private static PhaseSixEvidenceAdmission LoadCore(PhaseSixOptions options, PhaseSixLimits limits, CancellationToken token, int minimum, int maximum)
     {
         PhaseSixFormat.ValidateLimits(limits); token.ThrowIfCancellationRequested(); PhaseTwoSafety.RequirePlatform();
         if (options.ContentSessionId < 1 || !PhaseOneSourceCapture.Digest(options.AcceptedContentManifestSha256, 64) ||
-            !PhaseOneSourceCapture.Digest(options.ComponentKey, 64) || options.RootKeys is null || options.RootKeys.Count != 2 ||
-            options.RootKeys.Any(string.IsNullOrWhiteSpace) || options.RootKeys.Distinct(StringComparer.Ordinal).Count() != 2)
-            throw new ArgumentException("Exact accepted CONTENT/component keys and exactly two distinct sealed root keys required.");
+            !PhaseOneSourceCapture.Digest(options.ComponentKey, 64) || options.RootKeys is null || options.RootKeys.Count < minimum || options.RootKeys.Count > maximum ||
+            options.RootKeys.Any(string.IsNullOrWhiteSpace) || options.RootKeys.Distinct(StringComparer.Ordinal).Count() != options.RootKeys.Count)
+            throw new ArgumentException(minimum == 2 ? "Exact accepted CONTENT/component keys and exactly two distinct sealed root keys required."
+                : "Exact accepted CONTENT/component keys and three to six distinct sealed root keys required.");
         var admitted = new PhaseSixEvidenceAdmission(PathPolicy.Absolute(options.DatabasePath));
         try { admitted.Read(options, limits, token); return admitted; }
         catch { admitted.Dispose(); throw; }
@@ -70,8 +77,9 @@ internal sealed class PhaseSixEvidenceAdmission : IDisposable
             roots.Add(new(root, key, (string)row[1]!, entries)); facts.Add(native);
         }
         bool Within(string a, string b) => a == b || b.StartsWith(a.TrimEnd('\\') + "\\", StringComparison.Ordinal);
-        if (PathPolicy.Contains(roots[0].OriginalPath, roots[1].OriginalPath) || PathPolicy.Contains(roots[1].OriginalPath, roots[0].OriginalPath) ||
-            facts[0].Identity == facts[1].Identity || Within(facts[0].ResolvedPath, facts[1].ResolvedPath) || Within(facts[1].ResolvedPath, facts[0].ResolvedPath))
+        for (var a = 0; a < roots.Count; a++) for (var b = a + 1; b < roots.Count; b++)
+        if (PathPolicy.Contains(roots[a].OriginalPath, roots[b].OriginalPath) || PathPolicy.Contains(roots[b].OriginalPath, roots[a].OriginalPath) ||
+            facts[a].Identity == facts[b].Identity || Within(facts[a].ResolvedPath, facts[b].ResolvedPath) || Within(facts[b].ResolvedPath, facts[a].ResolvedPath))
             throw new InvalidOperationException("Observation roots must be physically disjoint, nonnested and nonaliased.");
         Roots = roots.ToArray();
         Provenance = new(options.ContentSessionId, options.AcceptedContentManifestSha256, parent,
@@ -80,16 +88,18 @@ internal sealed class PhaseSixEvidenceAdmission : IDisposable
             (string)db.Scalar("SELECT started_utc FROM sessions WHERE session_id=$0", options.ContentSessionId)!,
             (string)db.Scalar("SELECT completed_utc FROM sessions WHERE session_id=$0", options.ContentSessionId)!, ReportWriter.ToolVersion,
             PhaseTwoBuildProvenance.Current.EvidenceRevision);
-        var comparison = PhaseTwoContentComparison.Derive(PhaseTwoContentComparison.View(db, options.ContentSessionId, parent, Roots[0].Id),
-            PhaseTwoContentComparison.View(db, options.ContentSessionId, parent, Roots[1].Id), token);
         PhysicalPath Physical(PhaseFiveEntry e) => new(e.EntryId, e.ObservationRootId, e.RelativePath, e.Kind, e.Sha256, e.NativeIdentity, e.IsChart);
         var conflicts = new List<PhaseSixConflict>();
-        foreach (var conflict in PhysicalConflictAnnotations.Derive(Roots[0].Entries.Select(Physical).ToArray(), Roots[1].Entries.Select(Physical).ToArray(), comparison.Entries, token)) {
-            budget.Check();
-            if (conflicts.Count == limits.MaximumConflicts) throw new InvalidOperationException("UNION_NEEDS_EVIDENCE: conflict budget exceeded.");
-            conflicts.Add(new(conflict.RelativePath, conflict.Kinds, new[] {
-                conflict.EntryA is long a ? new PhaseSixSource(conflict.RootA!.Value, a) : null,
-                conflict.EntryB is long b ? new PhaseSixSource(conflict.RootB!.Value, b) : null }.OfType<PhaseSixSource>().OrderBy(s => s.RootId).ThenBy(s => s.EntryId).ToArray()));
+        for (var a = 0; a < Roots.Length; a++) for (var b = a + 1; b < Roots.Length; b++) {
+            var comparison = PhaseTwoContentComparison.Derive(PhaseTwoContentComparison.View(db, options.ContentSessionId, parent, Roots[a].Id),
+                PhaseTwoContentComparison.View(db, options.ContentSessionId, parent, Roots[b].Id), token);
+            foreach (var conflict in PhysicalConflictAnnotations.Derive(Roots[a].Entries.Select(Physical).ToArray(), Roots[b].Entries.Select(Physical).ToArray(), comparison.Entries, token)) {
+                budget.Check();
+                if (conflicts.Count == limits.MaximumConflicts) throw new InvalidOperationException("UNION_NEEDS_EVIDENCE: conflict budget exceeded.");
+                conflicts.Add(new(conflict.RelativePath, conflict.Kinds, new[] {
+                    conflict.EntryA is long entryA ? new PhaseSixSource(conflict.RootA!.Value, entryA) : null,
+                    conflict.EntryB is long entryB ? new PhaseSixSource(conflict.RootB!.Value, entryB) : null }.OfType<PhaseSixSource>().OrderBy(s => s.RootId).ThenBy(s => s.EntryId).ToArray()));
+            }
         }
         Conflicts = conflicts.OrderBy(c => c.RelativePath, StringComparer.Ordinal).ThenBy(c => string.Join("|", c.Types), StringComparer.Ordinal)
             .ThenBy(c => c.Sources[0].RootId).ThenBy(c => c.Sources[0].EntryId).ToArray();
